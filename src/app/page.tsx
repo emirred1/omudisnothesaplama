@@ -128,12 +128,31 @@ export default function Home() {
       </div>
 
       <footer className="w-full max-w-md mt-10 mb-6 flex items-center justify-center gap-4">
-        <div className="h-[1px] flex-grow bg-slate-100"></div>
-        <p className="text-[9px] font-medium text-slate-300 uppercase tracking-[0.4em] whitespace-nowrap">
-          made by efe with 💖
-        </p>
-        <div className="h-[1px] flex-grow bg-slate-100"></div>
-      </footer>
+  <div className="h-[1px] flex-grow bg-slate-100"></div>
+  <div className="flex items-center gap-2">
+    <span className="text-[9px] opacity-50">💖</span>
+    <a 
+      href="https://www.instagram.com/efe.jsx" 
+      target="_blank" 
+      rel="noopener noreferrer" 
+      className="flex items-center gap-1.5 group"
+    >
+      <p className="text-[9px] font-medium text-slate-300 uppercase tracking-[0.4em] whitespace-nowrap">
+        made by
+      </p>
+      {/* Instagram İkonu */}
+      <svg className="text-slate-300 group-hover:text-pink-500 transition-colors" xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <rect width="20" height="20" x="2" y="2" rx="5" ry="5"/>
+        <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/>
+        <line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/>
+      </svg>
+      <p className="text-[9px] font-bold text-blue-500 group-hover:text-blue-600 transition-colors uppercase tracking-[0.4em]">
+        efe
+      </p>
+    </a>
+  </div>
+  <div className="h-[1px] flex-grow bg-slate-100"></div>
+</footer>
     </main>
   );
 }
