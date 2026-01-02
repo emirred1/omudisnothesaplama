@@ -28,7 +28,6 @@ export default function Home() {
     }
   }, [scores, darkMode, isLoaded]);
 
-  // Sıfırlama Fonksiyonu (Uyarısız ve Anlık)
   const handleReset = () => {
     setScores(initialScores);
     setIsCalculating(true);
@@ -74,7 +73,6 @@ export default function Home() {
   return (
     <main className={`min-h-screen transition-colors duration-500 flex flex-col items-center justify-center p-6 text-[13px] ${darkMode ? 'bg-black text-zinc-100' : 'bg-zinc-50 text-zinc-900'}`}>
       
-      {/* Kontrol Butonları */}
       <div className="fixed top-6 right-6 flex items-center gap-2">
         <button 
           onClick={handleReset}
@@ -105,7 +103,6 @@ export default function Home() {
         </header>
 
         <div className="space-y-4 text-left">
-          {/* K1 */}
           <div>
             <label className="block text-[9px] font-black text-zinc-500 uppercase mb-1 ml-1 tracking-widest">K1 Sınavı (%22)</label>
             <input type="number" placeholder="0" value={scores.k1}
@@ -113,7 +110,6 @@ export default function Home() {
               className={`w-full border-none rounded-2xl p-4 text-lg font-medium outline-none transition-all placeholder:text-zinc-600 ${darkMode ? 'bg-zinc-900 text-white focus:ring-2 focus:ring-zinc-700' : 'bg-white shadow-sm focus:ring-2 focus:ring-zinc-200'}`} />
           </div>
 
-          {/* K2, K3, K4 */}
           {[2, 3, 4].map(num => (
             <div key={num} className={`grid grid-cols-2 gap-3 p-3 rounded-2xl border transition-colors ${darkMode ? 'bg-zinc-900/50 border-zinc-800' : 'bg-white border-zinc-100 shadow-sm'}`}>
               <div>
@@ -131,7 +127,6 @@ export default function Home() {
             </div>
           ))}
 
-          {/* DSBB ve TDP */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-[9px] font-black text-zinc-500 uppercase mb-1 ml-1 tracking-widest">DSBB (%10)</label>
@@ -147,16 +142,14 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Final - Güçlü Kontrast */}
           <div className="pt-2">
             <label className="block text-[10px] font-bold text-zinc-500 uppercase mb-1 ml-1 tracking-widest">Final Sınavı (%40)</label>
             <input type="number" placeholder="0" value={scores.final}
               onChange={(e) => handleInputChange('final', e.target.value)}
-              className={`w-full border-none rounded-3xl p-6 text-2xl font-bold outline-none transition-all ${darkMode ? 'bg-white text-black' : 'bg-zinc-900 text-white focus:ring-8 focus:ring-zinc-500/10'}`} />
+              className={`w-full border-none rounded-3xl p-6 text-2xl font-bold outline-none transition-all ${darkMode ? 'bg-zinc-200 text-black focus:ring-8 focus:ring-zinc-200/20' : 'bg-zinc-700 text-white focus:ring-8 focus:ring-zinc-800/10'}`} />
             <p className="text-[9px] text-zinc-500 mt-2 ml-2 font-medium italic">* Finalden 50 altı almak başarısız sayılmanıza neden olur.</p>
           </div>
 
-          {/* Sonuç Kartı */}
           <div className={`mt-6 rounded-[32px] p-8 transition-all duration-500 min-h-[140px] flex items-center justify-center ${
             !results.ready ? (darkMode ? 'bg-zinc-900/30 border-2 border-dashed border-zinc-800' : 'bg-zinc-50 border-2 border-dashed border-zinc-200') :
             results.isPassing ? (darkMode ? 'bg-zinc-900/80 text-white border border-zinc-700 shadow-2xl' : 'bg-white text-zinc-900 shadow-xl border border-zinc-100') : 
