@@ -28,6 +28,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         {children}
+        <meta name="google-adsense-account" content="ca-pub-3801726997875406">
       </body>
     </html>
   );
