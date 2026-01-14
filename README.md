@@ -1,6 +1,6 @@
-# 🩺 Akdeniz Tıp Not Hesaplayıcı
+# OMÜ Diş Hekimliği Not Hesaplayıcı
 
-✨ Akdeniz Üniversitesi Tıp Fakültesi öğrencilerinin komite ve final notlarını, okulun resmi ağırlıklandırma katsayılarına göre hesaplayan modern ve kullanıcı dostu bir web uygulamasıdır. 
+✨ OMÜ Diş Hekimliği öğrencilerinin vize ve final notlarını, okulun resmi ağırlıklandırma katsayılarına göre hesaplayan modern ve kullanıcı dostu bir web uygulamasıdır. 
 
 * Front-end kısmı bana aittir. Hesaplama tarafında AI'dan destek alınmıştır.
 
