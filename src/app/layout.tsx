@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Akdeniz Tıp - Not Hesaplama",
-  description: "Akdeniz TIp Dönem 1 Öğrencileri İçin Not Hesaplama",
+  title: "OMÜ Diş - Not Hesaplama",
+  description: "OMÜ Diş Dönem 1 Öğrencileri İçin Not Hesaplama",
 };
 
 export default function RootLayout({
