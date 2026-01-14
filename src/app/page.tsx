@@ -167,7 +167,7 @@ export default function Home() {
           <div className="flex justify-between items-end w-full">
             <div className="text-left">
               <p className="text-[10px] font-bold uppercase tracking-widest mb-1 text-zinc-500">Ağırlıklı Ortalama</p>
-              <p className={`text-6xl font-black tracking-tighter transition-all duration-300 ${Number(average) >= 50 ? 'text-emerald-500' : 'text-red-500'}`}>
+              <p className={`text-6xl font-black tracking-tighter transition-all duration-300 ${Number(average) >= 60 ? 'text-emerald-500' : 'text-red-500'}`}>
                 {average}
               </p>
             </div>
@@ -186,7 +186,7 @@ export default function Home() {
       <footer className="w-full max-w-md mt-10 mb-6 flex items-center justify-center gap-4">
         <div className={`h-[1px] flex-grow ${darkMode ? 'bg-zinc-900' : 'bg-zinc-200'}`}></div>
         <p className={`text-[9px] font-bold uppercase tracking-[0.2em] ${darkMode ? 'text-zinc-600' : 'text-zinc-400'}`}>
-            Modified with AI
+            Made by Emir with AI
         </p>
         <div className={`h-[1px] flex-grow ${darkMode ? 'bg-zinc-900' : 'bg-zinc-200'}`}></div>
       </footer>
