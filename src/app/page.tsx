@@ -6,7 +6,7 @@ import { useState, useEffect } from 'react';
 // 1. AYARLAR
 // ==========================================
 
-const UNI_NAME = "Ondokuz Mayıs Üniversitesi Diş Hekimliği"; 
+const UNI_NAME = "Ondokuz Mayıs Üniversitesi Diş Hekimliği Fakültesi"; 
 const BASLIK_ALT = "ORTALAMA HESAPLAMA"; 
 
 // Başlangıç müfredatı (SABİT)
@@ -17,8 +17,8 @@ const INITIAL_COURSES = [
   { id: 4, name: 'Organik Kimya', credit: 2, score: '' },
   { id: 5, name: 'Diş Anatomisi ve Fizyolojisi', credit: 1, score: '' },
   { id: 6, name: 'Dental Materyaller', credit: 1, score: '' },
-  { id: 7, name: 'Tıbbi Biyokimya', credit: 2, score: '' },
-  { id: 8, name: 'Tıbbi Biyoloji ve Genetik', credit: 2, score: '' },
+  { id: 7, name: 'Tıbbi Biyokimya', credit: 1, score: '' },
+  { id: 8, name: 'Tıbbi Biyoloji ve Genetik', credit: 1, score: '' },
   { id: 9, name: 'Öğrenci Oryantasyonu ve Diş Hekimliği Tarihi', credit: 1, score: '' },
   { id: 10, name: 'Anatomi Pratik', credit: 1, score: '' },
   { id: 11, name: 'Histoloji Pratik', credit: 0.5, score: '' },
@@ -36,12 +36,10 @@ export default function Home() {
 
   // Kayıtlı verileri yükle
   useEffect(() => {
-    const savedTheme = localStorage.getItem('uni_theme_final');
-    const savedCourses = localStorage.getItem('uni_courses_final');
+    const savedTheme = localStorage.getItem('uni_theme_final_v2');
+    const savedCourses = localStorage.getItem('uni_courses_final_v2');
 
     if (savedTheme === 'dark') setDarkMode(true);
-    // Not: Artık ders listesi sabit olduğu için sadece notları çekiyoruz
-    // Ancak yapı değişmesin diye tüm objeyi kaydedip çekiyoruz, sorun olmaz.
     if (savedCourses) setCourses(JSON.parse(savedCourses));
     setIsLoaded(true);
   }, []);
@@ -49,8 +47,8 @@ export default function Home() {
   // Değişiklikleri kaydet ve hesapla
   useEffect(() => {
     if (isLoaded) {
-      localStorage.setItem('uni_theme_final', darkMode ? 'dark' : 'light');
-      localStorage.setItem('uni_courses_final', JSON.stringify(courses));
+      localStorage.setItem('uni_theme_final_v2', darkMode ? 'dark' : 'light');
+      localStorage.setItem('uni_courses_final_v2', JSON.stringify(courses));
       calculateAverage();
     }
   }, [courses, darkMode, isLoaded]);
@@ -60,7 +58,6 @@ export default function Home() {
     let totalCredits = 0;
 
     courses.forEach(course => {
-      // Not girilmemişse hesaplamaya katma
       if (course.score !== '' && course.credit) {
         const scoreVal = parseFloat(course.score.toString());
         const creditVal = parseFloat(course.credit.toString());
@@ -75,15 +72,16 @@ export default function Home() {
   };
 
   const updateScore = (id: number, value: string) => {
-    // 100'den büyük sayı girilmesini engelle
+    // 1. KURAL: 100'den büyükse engelle
     if (Number(value) > 100) return;
+
+    // 2. KURAL: 0'dan küçükse (negatifse) engelle
+    if (Number(value) < 0) return;
     
-    // Sadece SCORE alanını güncelliyoruz, diğer her şey sabit
     setCourses(prev => prev.map(c => c.id === id ? { ...c, score: value } : c));
   };
 
   const resetScores = () => {
-    // Dersleri silmek yerine sadece notları temizliyoruz
     const resetList = INITIAL_COURSES.map(c => ({...c, score: ''}));
     setCourses(resetList);
   };
@@ -139,7 +137,7 @@ export default function Home() {
                 />
               </div>
 
-              {/* Not (100 üzerinden - DEĞİŞTİRİLEBİLİR) */}
+              {/* Not (0-100 arası) */}
               <div className="flex flex-col items-center w-16">
                  <label className="text-[8px] font-bold text-zinc-500 uppercase">PUAN</label>
                  <input 
@@ -152,12 +150,8 @@ export default function Home() {
                   className={`w-full bg-transparent text-center font-bold outline-none text-lg ${darkMode ? 'text-emerald-400 placeholder:text-zinc-800' : 'text-emerald-600 placeholder:text-zinc-200'}`}
                  />
               </div>
-
-              {/* Sil butonu kaldırıldı, burası boş */}
             </div>
           ))}
-          
-          {/* Ekleme butonu kaldırıldı */}
         </div>
 
         {/* Sonuç Alanı */}
