@@ -10,7 +10,8 @@ const UNI_NAME_LINE1 = "Ondokuz Mayıs Üniversitesi";
 const UNI_NAME_LINE2 = "Diş Hekimliği Fakültesi";
 const BASLIK_ALT = "ORTALAMA HESAPLAMA"; 
 
-const GECME_NOTU = 59.5;
+// --- DEĞİŞİKLİK 1: Geçme notu 60 yapıldı ---
+const GECME_NOTU = 60; 
 
 // --- GÜZ DÖNEMİ DERSLERİ ---
 const GUZ_DERSLERI = [
@@ -18,8 +19,8 @@ const GUZ_DERSLERI = [
   { id: 2, name: 'Fizyoloji', credit: 2, score: '' },
   { id: 3, name: 'Histoloji', credit: 2, score: '' },
   { id: 4, name: 'Organik Kimya', credit: 2, score: '' },
-  { id: 5, name: 'Diş Anatomisi ve Fizyolojisi I', credit: 1, score: '' },
-  { id: 6, name: 'Dental Materyaller I', credit: 1, score: '' },
+  { id: 5, name: 'Diş Anatomisi ve Fizyolojisi', credit: 1, score: '' },
+  { id: 6, name: 'Dental Materyaller', credit: 1, score: '' },
   { id: 7, name: 'Tıbbi Biyokimya', credit: 2, score: '' },
   { id: 8, name: 'Tıbbi Biyoloji ve Genetik', credit: 2, score: '' },
   { id: 9, name: 'Öğrenci Oryantasyonu ve Diş Hekimliği Tarihi', credit: 1, score: '' },
@@ -64,8 +65,8 @@ export default function Home() {
 
   // Kayıtlı verileri yükle
   useEffect(() => {
-    const savedTheme = localStorage.getItem('uni_theme_v5');
-    const savedData = localStorage.getItem('uni_data_v5');
+    const savedTheme = localStorage.getItem('uni_theme_v6');
+    const savedData = localStorage.getItem('uni_data_v6');
 
     if (savedTheme === 'dark') setDarkMode(true);
     if (savedData) setAllCourses(JSON.parse(savedData));
@@ -75,8 +76,8 @@ export default function Home() {
   // Değişiklikleri kaydet ve hesapla
   useEffect(() => {
     if (isLoaded) {
-      localStorage.setItem('uni_theme_v5', darkMode ? 'dark' : 'light');
-      localStorage.setItem('uni_data_v5', JSON.stringify(allCourses));
+      localStorage.setItem('uni_theme_v6', darkMode ? 'dark' : 'light');
+      localStorage.setItem('uni_data_v6', JSON.stringify(allCourses));
     }
     calculateAll();
   }, [allCourses, darkMode, isLoaded]);
@@ -101,18 +102,20 @@ export default function Home() {
   };
 
   const calculateAll = () => {
-    const guz = getAverageOfList(allCourses.guz);
-    const bahar = getAverageOfList(allCourses.bahar);
+    let guz = getAverageOfList(allCourses.guz);
+    let bahar = getAverageOfList(allCourses.bahar);
     
-    // Güz (%25) + Bahar (%25) = Vize Ortalaması (Yıl içinin %50'si)
-    // Aslında matematiksel olarak (Güz + Bahar) / 2 bize 100 üzerinden vize ortalamasını verir.
-    const vize = (guz + bahar) / 2;
+    // --- DEĞİŞİKLİK 2: Ortalamaları Yuvarla (0.5 ve üzeri yukarı) ---
+    guz = Math.round(guz);
+    bahar = Math.round(bahar);
 
-    // Hedef: (Güz * 0.25) + (Bahar * 0.25) + (Final * 0.50) >= 59.5
-    // Yani: (Vize * 0.50) + (Final * 0.50) >= 59.5
-    // Final * 0.50 >= 59.5 - (Vize * 0.50)
-    // Final >= (59.5 - (Vize * 0.50)) / 0.50
+    // Vize Ortalaması = (Yuvarlanmış Güz + Yuvarlanmış Bahar) / 2
+    let vize = (guz + bahar) / 2;
     
+    // Vize ortalamasını da yuvarlıyoruz (Örn: 59.5 -> 60 olsun diye)
+    vize = Math.round(vize);
+
+    // Hedef: (Vize * 0.50) + (Final * 0.50) >= GECME_NOTU
     const currentPoints = vize * 0.5;
     let needed = (GECME_NOTU - currentPoints) / 0.5;
 
@@ -198,18 +201,19 @@ export default function Home() {
           ))}
         </div>
 
-        {/* --- YENİ SONUÇ ALANI (ÖZET TABLOSU) --- */}
+        {/* --- SONUÇ ALANI (ÖZET TABLOSU) --- */}
         <div className={`mt-2 rounded-[32px] p-6 transition-all duration-500 flex flex-col gap-6 ${darkMode ? 'bg-zinc-900/80 text-white border border-zinc-700 shadow-2xl' : 'bg-white text-zinc-900 shadow-xl border border-zinc-50'}`}>
           
           {/* Üst Satır: Güz ve Bahar Ortalamaları */}
           <div className="grid grid-cols-2 gap-4">
             <div className={`p-4 rounded-2xl text-center ${darkMode ? 'bg-zinc-800/50' : 'bg-zinc-50'}`}>
               <p className="text-[9px] font-bold uppercase tracking-widest text-zinc-500 mb-1">Güz Ort.</p>
-              <p className="text-2xl font-bold">{results.guzAvg.toFixed(2)}</p>
+              {/* .toFixed(0) kullanarak tam sayı gösteriyoruz */}
+              <p className="text-2xl font-bold">{results.guzAvg.toFixed(0)}</p>
             </div>
             <div className={`p-4 rounded-2xl text-center ${darkMode ? 'bg-zinc-800/50' : 'bg-zinc-50'}`}>
               <p className="text-[9px] font-bold uppercase tracking-widest text-zinc-500 mb-1">Bahar Ort.</p>
-              <p className="text-2xl font-bold">{results.baharAvg.toFixed(2)}</p>
+              <p className="text-2xl font-bold">{results.baharAvg.toFixed(0)}</p>
             </div>
           </div>
 
@@ -217,7 +221,7 @@ export default function Home() {
           <div className="text-center">
              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500 mb-1">GENEL VİZE ORTALAMASI</p>
              <p className={`text-5xl font-black tracking-tighter ${darkMode ? 'text-white' : 'text-zinc-800'}`}>
-               {results.vizeAvg.toFixed(2)}
+               {results.vizeAvg.toFixed(0)}
              </p>
              <p className="text-[9px] text-zinc-400 mt-1">(%50 Etkili)</p>
           </div>
@@ -233,7 +237,7 @@ export default function Home() {
              {results.neededFinal > 100 ? (
                <div>
                  <p className="text-3xl font-black text-red-500">İMKANSIZ</p>
-                 <p className="text-[10px] text-red-400 mt-1">({results.neededFinal.toFixed(1)} gerekiyor)</p>
+                 <p className="text-[10px] text-red-400 mt-1">({results.neededFinal.toFixed(0)} gerekiyor)</p>
                </div>
              ) : results.neededFinal === 0 ? (
                <div>
@@ -242,7 +246,7 @@ export default function Home() {
                </div>
              ) : (
                <p className={`text-4xl font-black ${darkMode ? 'text-white' : 'text-zinc-900'}`}>
-                 {results.neededFinal.toFixed(1)}
+                 {results.neededFinal.toFixed(0)}
                </p>
              )}
           </div>
