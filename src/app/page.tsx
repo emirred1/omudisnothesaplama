@@ -10,6 +10,8 @@ const UNI_NAME_LINE1 = "Ondokuz Mayıs Üniversitesi";
 const UNI_NAME_LINE2 = "Diş Hekimliği Fakültesi";
 const BASLIK_ALT = "ORTALAMA HESAPLAMA"; 
 
+const GECME_NOTU = 59.5;
+
 // --- GÜZ DÖNEMİ DERSLERİ ---
 const GUZ_DERSLERI = [
   { id: 1, name: 'Anatomi', credit: 2, score: '' },
