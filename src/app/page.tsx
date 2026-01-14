@@ -11,8 +11,9 @@ const UNI_NAME_LINE2 = "Diş Hekimliği Fakültesi";
 const BASLIK_ALT = "ORTALAMA HESAPLAMA"; 
 
 const GECME_NOTU = 60; 
+const FINAL_BARAJI = 50; // Yeni Kural: Finalden en az 50 alınmalı
 
-// --- 1. SINIF DERSLERİ ---
+// --- 1. SINIF (DÖNEM 1) DERSLERİ ---
 const GUZ_DERSLERI_1 = [
   { id: 1, name: 'Anatomi', credit: 2, score: '' },
   { id: 2, name: 'Fizyoloji', credit: 2, score: '' },
@@ -40,7 +41,7 @@ const BAHAR_DERSLERI_1 = [
   { id: 111, name: 'Histoloji Pratik', credit: 0.5, score: '' },
 ];
 
-// --- 2. SINIF DERSLERİ (TAHMİNİ OMÜ MÜFREDATI) ---
+// --- 2. SINIF (DÖNEM 2) DERSLERİ ---
 const GUZ_DERSLERI_2 = [
   { id: 201, name: 'Protetik Diş Tedavisi', credit: 2, score: '' },
   { id: 202, name: 'Restoratif Diş Tedavisi', credit: 2, score: '' },
@@ -58,7 +59,7 @@ const BAHAR_DERSLERI_2 = [
   { id: 303, name: 'Endodonti', credit: 2, score: '' },
   { id: 304, name: 'Ağız Diş ve Çene Radyolojisi', credit: 1, score: '' },
   { id: 305, name: 'Ağız Diş ve Çene Cerrahisi', credit: 2, score: '' },
-  { id: 306, name: 'Periodontoloji I', credit: 1, score: '' },
+  { id: 306, name: 'Periodontoloji', credit: 1, score: '' },
   { id: 307, name: 'Kariyer Planlama', credit: 1, score: '' },
 ];
 
@@ -67,7 +68,6 @@ const BAHAR_DERSLERI_2 = [
 // ==========================================
 
 export default function Home() {
-  // State yapısı: Sınıf -> Dönem -> Dersler
   const [allCourses, setAllCourses] = useState({
     sinif1: {
       guz: GUZ_DERSLERI_1,
@@ -79,8 +79,8 @@ export default function Home() {
     }
   });
   
-  const [activeClass, setActiveClass] = useState('sinif1'); // 'sinif1' veya 'sinif2'
-  const [activeTab, setActiveTab] = useState('guz'); // 'guz' veya 'bahar'
+  const [activeClass, setActiveClass] = useState('sinif1');
+  const [activeTab, setActiveTab] = useState('guz');
   
   const [results, setResults] = useState({
     guzAvg: 0,
@@ -92,11 +92,10 @@ export default function Home() {
   const [darkMode, setDarkMode] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Kayıtlı verileri yükle (v7 versiyonu)
   useEffect(() => {
-    const savedTheme = localStorage.getItem('uni_theme_v7');
-    const savedData = localStorage.getItem('uni_data_v7');
-    const savedClass = localStorage.getItem('uni_class_v7');
+    const savedTheme = localStorage.getItem('uni_theme_v8');
+    const savedData = localStorage.getItem('uni_data_v8');
+    const savedClass = localStorage.getItem('uni_class_v8');
 
     if (savedTheme === 'dark') setDarkMode(true);
     if (savedData) setAllCourses(JSON.parse(savedData));
@@ -104,12 +103,11 @@ export default function Home() {
     setIsLoaded(true);
   }, []);
 
-  // Değişiklikleri kaydet
   useEffect(() => {
     if (isLoaded) {
-      localStorage.setItem('uni_theme_v7', darkMode ? 'dark' : 'light');
-      localStorage.setItem('uni_data_v7', JSON.stringify(allCourses));
-      localStorage.setItem('uni_class_v7', activeClass);
+      localStorage.setItem('uni_theme_v8', darkMode ? 'dark' : 'light');
+      localStorage.setItem('uni_data_v8', JSON.stringify(allCourses));
+      localStorage.setItem('uni_class_v8', activeClass);
     }
     calculateAll();
   }, [allCourses, activeClass, darkMode, isLoaded]);
@@ -134,23 +132,26 @@ export default function Home() {
   };
 
   const calculateAll = () => {
-    // Sadece aktif olan sınıfın verilerini alıp hesaplıyoruz
     const currentClassData = allCourses[activeClass as 'sinif1' | 'sinif2'];
     
     let guz = getAverageOfList(currentClassData.guz);
     let bahar = getAverageOfList(currentClassData.bahar);
     
-    // Yuvarlama işlemleri
     guz = Math.round(guz);
     bahar = Math.round(bahar);
 
     let vize = (guz + bahar) / 2;
     vize = Math.round(vize);
 
+    // Hedef: (Vize * 0.50) + (Final * 0.50) >= 60
     const currentPoints = vize * 0.5;
     let needed = (GECME_NOTU - currentPoints) / 0.5;
 
-    if (needed < 0) needed = 0;
+    // YENİ KURAL: Final barajı (Minimum 50 alınmalı)
+    // Eğer hesaplanan 'needed' 50'den küçükse, onu zorla 50 yap.
+    if (needed < FINAL_BARAJI) {
+        needed = FINAL_BARAJI;
+    }
 
     setResults({
       guzAvg: guz,
@@ -174,7 +175,6 @@ export default function Home() {
   };
 
   const resetCurrentScores = () => {
-    // Aktif sınıfın aktif dönemini temizle
     const defaultList = activeClass === 'sinif1' 
       ? (activeTab === 'guz' ? GUZ_DERSLERI_1 : BAHAR_DERSLERI_1)
       : (activeTab === 'guz' ? GUZ_DERSLERI_2 : BAHAR_DERSLERI_2);
@@ -192,7 +192,6 @@ export default function Home() {
 
   if (!isLoaded) return null;
 
-  // Şu an ekranda gösterilecek dersleri seç
   const displayCourses = allCourses[activeClass as 'sinif1' | 'sinif2'][activeTab as 'guz' | 'bahar'];
 
   return (
@@ -220,26 +219,30 @@ export default function Home() {
           </h1>
           <p className="text-zinc-500 text-[10px] mt-3 font-medium uppercase tracking-[0.3em]">{BASLIK_ALT}</p>
         
-          {/* SINIF SEÇİMİ (YENİ EKLENDİ) */}
-          <div className="mt-8 mb-4 flex justify-center gap-4">
-             <button 
-                onClick={() => setActiveClass('sinif1')} 
-                className={`text-sm font-bold uppercase tracking-wider transition-all duration-300 ${activeClass === 'sinif1' ? (darkMode ? 'text-white border-b-2 border-white' : 'text-zinc-900 border-b-2 border-zinc-900') : 'text-zinc-500 hover:text-zinc-400'}`}
-             >
-                1. Sınıf
-             </button>
-             <button 
-                onClick={() => setActiveClass('sinif2')} 
-                className={`text-sm font-bold uppercase tracking-wider transition-all duration-300 ${activeClass === 'sinif2' ? (darkMode ? 'text-white border-b-2 border-white' : 'text-zinc-900 border-b-2 border-zinc-900') : 'text-zinc-500 hover:text-zinc-400'}`}
-             >
-                2. Sınıf
-             </button>
-          </div>
+          {/* SEÇİM KUTUSU (2x2 GRID) */}
+          <div className={`mt-8 inline-flex flex-col p-1.5 rounded-[20px] transition-all ${darkMode ? 'bg-zinc-900 border border-zinc-800' : 'bg-zinc-100/80 border border-zinc-200'}`}>
+            
+            {/* ÜST SATIR: DÖNEM 1 / DÖNEM 2 */}
+            <div className="flex gap-1 w-full mb-1">
+              <button 
+                  onClick={() => setActiveClass('sinif1')} 
+                  className={`flex-1 px-4 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all ${activeClass === 'sinif1' ? (darkMode ? 'bg-zinc-800 text-white shadow-sm' : 'bg-white text-zinc-900 shadow-sm') : 'text-zinc-500 hover:bg-black/5 dark:hover:bg-white/5'}`}
+              >
+                  DÖNEM 1
+              </button>
+              <button 
+                  onClick={() => setActiveClass('sinif2')} 
+                  className={`flex-1 px-4 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all ${activeClass === 'sinif2' ? (darkMode ? 'bg-zinc-800 text-white shadow-sm' : 'bg-white text-zinc-900 shadow-sm') : 'text-zinc-500 hover:bg-black/5 dark:hover:bg-white/5'}`}
+              >
+                  DÖNEM 2
+              </button>
+            </div>
 
-          {/* DÖNEM SEÇİMİ (TAB) */}
-          <div className={`inline-flex p-1 rounded-2xl transition-all ${darkMode ? 'bg-zinc-900 border border-zinc-800' : 'bg-zinc-200/50'}`}>
-             <button onClick={() => setActiveTab('guz')} className={`px-8 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all duration-300 ${activeTab === 'guz' ? (darkMode ? 'bg-zinc-800 text-white shadow-lg' : 'bg-white text-zinc-900 shadow-md') : 'text-zinc-500 hover:text-zinc-400'}`}>Güz</button>
-             <button onClick={() => setActiveTab('bahar')} className={`px-8 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all duration-300 ${activeTab === 'bahar' ? (darkMode ? 'bg-zinc-800 text-white shadow-lg' : 'bg-white text-zinc-900 shadow-md') : 'text-zinc-500 hover:text-zinc-400'}`}>Bahar</button>
+            {/* ALT SATIR: GÜZ / BAHAR */}
+            <div className="flex gap-1 w-full">
+              <button onClick={() => setActiveTab('guz')} className={`flex-1 px-4 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all ${activeTab === 'guz' ? (darkMode ? 'bg-zinc-800 text-white shadow-sm' : 'bg-white text-zinc-900 shadow-sm') : 'text-zinc-500 hover:bg-black/5 dark:hover:bg-white/5'}`}>GÜZ</button>
+              <button onClick={() => setActiveTab('bahar')} className={`flex-1 px-4 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all ${activeTab === 'bahar' ? (darkMode ? 'bg-zinc-800 text-white shadow-sm' : 'bg-white text-zinc-900 shadow-sm') : 'text-zinc-500 hover:bg-black/5 dark:hover:bg-white/5'}`}>BAHAR</button>
+            </div>
           </div>
         </header>
 
@@ -288,19 +291,25 @@ export default function Home() {
           <div className={`p-6 rounded-2xl text-center border-2 border-dashed transition-all ${
              results.neededFinal > 100 
                ? (darkMode ? 'border-red-900/50 bg-red-900/10' : 'border-red-200 bg-red-50') 
-               : (results.neededFinal === 0 ? (darkMode ? 'border-emerald-900/50 bg-emerald-900/10' : 'border-emerald-200 bg-emerald-50') : (darkMode ? 'border-zinc-700 bg-zinc-800/50' : 'border-zinc-200 bg-zinc-50'))
+               : (results.neededFinal <= 0 ? (darkMode ? 'border-emerald-900/50 bg-emerald-900/10' : 'border-emerald-200 bg-emerald-50') : (darkMode ? 'border-zinc-700 bg-zinc-800/50' : 'border-zinc-200 bg-zinc-50'))
           }`}>
              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500 mb-2">FİNALDEN ALMAN GEREKEN</p>
              
              {results.neededFinal > 100 ? (
                <div>
-                 <p className="text-3xl font-black text-red-500">İMKANSIZ</p>
+                 <p className="text-3xl font-black text-red-500">GEÇMİŞ OLSUN</p>
                  <p className="text-[10px] text-red-400 mt-1">({results.neededFinal.toFixed(0)} gerekiyor)</p>
                </div>
-             ) : results.neededFinal === 0 ? (
+             ) : results.neededFinal <= 0 ? (
+               // Final barajı (50) kuralı olduğu için neededFinal'in 0 olması teknik olarak imkansız 
+               // (çünkü minimum 50'ye set ediyoruz). Ama biz yine de vize çok yüksekse 50 gösteriyoruz.
+               // Eğer buraya düşerse 'vize yetiyor ama baraj var' demektir.
+               // Ancak yukarıda needed < 50 ise needed = 50 yaptık. 
+               // Yani neededFinal en az 50 olacak. 
+               // O yüzden bu bloğa (results.neededFinal <= 0) teknik olarak hiç girmeyebilir.
+               // Yine de güvenli kod için bırakalım.
                <div>
                  <p className="text-3xl font-black text-emerald-500">GEÇTİNİZ! 🎉</p>
-                 <p className="text-[10px] text-emerald-600 mt-1">Vize ortalamanız {GECME_NOTU}'i geçti.</p>
                </div>
              ) : (
                <p className={`text-4xl font-black ${darkMode ? 'text-white' : 'text-zinc-900'}`}>
