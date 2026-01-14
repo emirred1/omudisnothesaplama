@@ -6,7 +6,9 @@ import { useState, useEffect } from 'react';
 // 1. AYARLAR
 // ==========================================
 
-const UNI_NAME = "Ondokuz Mayıs Üniversitesi Diş Hekimliği Fakültesi"; 
+// Başlığı ikiye böldük ki düzgün alt alta dursun
+const UNI_NAME_LINE1 = "Ondokuz Mayıs Üniversitesi"; 
+const UNI_NAME_LINE2 = "Diş Hekimliği Fakültesi";
 const BASLIK_ALT = "ORTALAMA HESAPLAMA"; 
 
 // Başlangıç müfredatı (SABİT)
@@ -17,8 +19,8 @@ const INITIAL_COURSES = [
   { id: 4, name: 'Organik Kimya', credit: 2, score: '' },
   { id: 5, name: 'Diş Anatomisi ve Fizyolojisi', credit: 1, score: '' },
   { id: 6, name: 'Dental Materyaller', credit: 1, score: '' },
-  { id: 7, name: 'Tıbbi Biyokimya', credit: 1, score: '' },
-  { id: 8, name: 'Tıbbi Biyoloji ve Genetik', credit: 1, score: '' },
+  { id: 7, name: 'Tıbbi Biyokimya', credit: 2, score: '' },
+  { id: 8, name: 'Tıbbi Biyoloji ve Genetik', credit: 2, score: '' },
   { id: 9, name: 'Öğrenci Oryantasyonu ve Diş Hekimliği Tarihi', credit: 1, score: '' },
   { id: 10, name: 'Anatomi Pratik', credit: 1, score: '' },
   { id: 11, name: 'Histoloji Pratik', credit: 0.5, score: '' },
@@ -36,8 +38,8 @@ export default function Home() {
 
   // Kayıtlı verileri yükle
   useEffect(() => {
-    const savedTheme = localStorage.getItem('uni_theme_final_v2');
-    const savedCourses = localStorage.getItem('uni_courses_final_v2');
+    const savedTheme = localStorage.getItem('uni_theme_final_v3'); // v3'e geçtik çakışma olmasın
+    const savedCourses = localStorage.getItem('uni_courses_final_v3');
 
     if (savedTheme === 'dark') setDarkMode(true);
     if (savedCourses) setCourses(JSON.parse(savedCourses));
@@ -47,8 +49,8 @@ export default function Home() {
   // Değişiklikleri kaydet ve hesapla
   useEffect(() => {
     if (isLoaded) {
-      localStorage.setItem('uni_theme_final_v2', darkMode ? 'dark' : 'light');
-      localStorage.setItem('uni_courses_final_v2', JSON.stringify(courses));
+      localStorage.setItem('uni_theme_final_v3', darkMode ? 'dark' : 'light');
+      localStorage.setItem('uni_courses_final_v3', JSON.stringify(courses));
       calculateAverage();
     }
   }, [courses, darkMode, isLoaded]);
@@ -72,12 +74,8 @@ export default function Home() {
   };
 
   const updateScore = (id: number, value: string) => {
-    // 1. KURAL: 100'den büyükse engelle
     if (Number(value) > 100) return;
-
-    // 2. KURAL: 0'dan küçükse (negatifse) engelle
     if (Number(value) < 0) return;
-    
     setCourses(prev => prev.map(c => c.id === id ? { ...c, score: value } : c));
   };
 
@@ -105,12 +103,14 @@ export default function Home() {
       </div>
 
       <div className={`w-full max-w-md flex-grow flex flex-col justify-center py-10`}>
-        {/* Başlık */}
+        {/* Başlık Alanı - DÜZELTİLDİ */}
         <header className="mb-10 text-center">
           <h1 className={`text-3xl font-light tracking-tight ${darkMode ? 'text-white' : 'text-zinc-800'}`}>
-            {UNI_NAME}
+            {UNI_NAME_LINE1}
+            {/* block class'ı bir alt satıra atar, mt-1 biraz boşluk bırakır */}
+            <span className="block mt-1 font-medium">{UNI_NAME_LINE2}</span>
           </h1>
-          <p className="text-zinc-500 text-[10px] mt-2 font-medium uppercase tracking-[0.3em]">{BASLIK_ALT}</p>
+          <p className="text-zinc-500 text-[10px] mt-3 font-medium uppercase tracking-[0.3em]">{BASLIK_ALT}</p>
         </header>
 
         {/* Ders Listesi */}
@@ -118,7 +118,6 @@ export default function Home() {
           {courses.map((course) => (
             <div key={course.id} className={`flex items-center gap-3 p-3 rounded-2xl border transition-colors ${darkMode ? 'bg-zinc-900/50 border-zinc-800' : 'bg-white border-zinc-100 shadow-sm'}`}>
               
-              {/* Ders Adı (KİLİTLİ) */}
               <input 
                 type="text" 
                 value={course.name} 
@@ -126,7 +125,6 @@ export default function Home() {
                 className={`flex-grow bg-transparent border-none outline-none text-sm font-medium cursor-default ${darkMode ? 'text-zinc-400' : 'text-zinc-700'}`}
               />
 
-              {/* Kredi (KİLİTLİ) */}
               <div className="flex flex-col items-center w-12">
                 <label className="text-[8px] font-bold text-zinc-500 uppercase">KREDİ</label>
                 <input 
@@ -137,7 +135,6 @@ export default function Home() {
                 />
               </div>
 
-              {/* Not (0-100 arası) */}
               <div className="flex flex-col items-center w-16">
                  <label className="text-[8px] font-bold text-zinc-500 uppercase">PUAN</label>
                  <input 
@@ -176,7 +173,6 @@ export default function Home() {
 
       </div>
       
-      {/* Footer */}
       <footer className="w-full max-w-md mt-10 mb-6 flex items-center justify-center gap-4">
         <div className={`h-[1px] flex-grow ${darkMode ? 'bg-zinc-900' : 'bg-zinc-200'}`}></div>
         <p className={`text-[9px] font-bold uppercase tracking-[0.2em] ${darkMode ? 'text-zinc-600' : 'text-zinc-400'}`}>
