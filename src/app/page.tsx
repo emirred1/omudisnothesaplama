@@ -3,13 +3,13 @@
 import { useState, useEffect } from 'react';
 
 // ==========================================
-// 1. AYARLAR - OKUL ADINI BURADAN DEĞİŞTİR
+// 1. AYARLAR
 // ==========================================
 
-const UNI_NAME = "Ondokuz Mayıs Üniversitesi"; 
-const BASLIK_ALT = "ORTALAMA HESAPLA"; 
+const UNI_NAME = "Ondokuz Mayıs Üniversitesi Diş Hekimliği"; 
+const BASLIK_ALT = "ORTALAMA HESAPLAMA"; 
 
-// Başlangıçta ekranda görünecek örnek dersler
+// Başlangıç müfredatı (SABİT)
 const INITIAL_COURSES = [
   { id: 1, name: 'Anatomi', credit: 2, score: '' },
   { id: 2, name: 'Fizyoloji', credit: 2, score: '' },
@@ -36,10 +36,12 @@ export default function Home() {
 
   // Kayıtlı verileri yükle
   useEffect(() => {
-    const savedTheme = localStorage.getItem('uni_theme_100');
-    const savedCourses = localStorage.getItem('uni_courses_100');
+    const savedTheme = localStorage.getItem('uni_theme_final');
+    const savedCourses = localStorage.getItem('uni_courses_final');
 
     if (savedTheme === 'dark') setDarkMode(true);
+    // Not: Artık ders listesi sabit olduğu için sadece notları çekiyoruz
+    // Ancak yapı değişmesin diye tüm objeyi kaydedip çekiyoruz, sorun olmaz.
     if (savedCourses) setCourses(JSON.parse(savedCourses));
     setIsLoaded(true);
   }, []);
@@ -47,8 +49,8 @@ export default function Home() {
   // Değişiklikleri kaydet ve hesapla
   useEffect(() => {
     if (isLoaded) {
-      localStorage.setItem('uni_theme_100', darkMode ? 'dark' : 'light');
-      localStorage.setItem('uni_courses_100', JSON.stringify(courses));
+      localStorage.setItem('uni_theme_final', darkMode ? 'dark' : 'light');
+      localStorage.setItem('uni_courses_final', JSON.stringify(courses));
       calculateAverage();
     }
   }, [courses, darkMode, isLoaded]);
@@ -58,7 +60,7 @@ export default function Home() {
     let totalCredits = 0;
 
     courses.forEach(course => {
-      // Eğer not girilmemişse hesaplamaya katma
+      // Not girilmemişse hesaplamaya katma
       if (course.score !== '' && course.credit) {
         const scoreVal = parseFloat(course.score.toString());
         const creditVal = parseFloat(course.credit.toString());
@@ -72,24 +74,18 @@ export default function Home() {
     else setAverage((totalWeightedScore / totalCredits).toFixed(2));
   };
 
-  const updateCourse = (id: number, field: string, value: string | number) => {
+  const updateScore = (id: number, value: string) => {
     // 100'den büyük sayı girilmesini engelle
-    if (field === 'score' && Number(value) > 100) return;
+    if (Number(value) > 100) return;
     
-    setCourses(prev => prev.map(c => c.id === id ? { ...c, [field]: value } : c));
+    // Sadece SCORE alanını güncelliyoruz, diğer her şey sabit
+    setCourses(prev => prev.map(c => c.id === id ? { ...c, score: value } : c));
   };
 
-  const addCourse = () => {
-    const newId = courses.length > 0 ? Math.max(...courses.map(c => c.id)) + 1 : 1;
-    setCourses([...courses, { id: newId, name: 'Yeni Ders', credit: 2, score: '' }]);
-  };
-
-  const removeCourse = (id: number) => {
-    setCourses(prev => prev.filter(c => c.id !== id));
-  };
-
-  const resetAll = () => {
-    setCourses(INITIAL_COURSES);
+  const resetScores = () => {
+    // Dersleri silmek yerine sadece notları temizliyoruz
+    const resetList = INITIAL_COURSES.map(c => ({...c, score: ''}));
+    setCourses(resetList);
   };
 
   if (!isLoaded) return null;
@@ -99,7 +95,7 @@ export default function Home() {
       
       {/* Sağ Üst Kontroller */}
       <div className="fixed top-6 right-6 flex items-center gap-2 z-50">
-        <button onClick={resetAll} title="Sıfırla" className={`p-3 rounded-full transition-all active:scale-90 ${darkMode ? 'bg-zinc-900 text-zinc-500 border border-zinc-800' : 'bg-white shadow-sm text-zinc-400 border border-zinc-100'}`}>
+        <button onClick={resetScores} title="Notları Temizle" className={`p-3 rounded-full transition-all active:scale-90 ${darkMode ? 'bg-zinc-900 text-zinc-500 border border-zinc-800' : 'bg-white shadow-sm text-zinc-400 border border-zinc-100'}`}>
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
         </button>
         <button onClick={() => setDarkMode(!darkMode)} className={`p-3 rounded-full transition-all active:scale-90 ${darkMode ? 'bg-zinc-900 text-zinc-400 border border-zinc-800' : 'bg-white shadow-sm text-zinc-600 border border-zinc-100'}`}>
@@ -124,27 +120,26 @@ export default function Home() {
           {courses.map((course) => (
             <div key={course.id} className={`flex items-center gap-3 p-3 rounded-2xl border transition-colors ${darkMode ? 'bg-zinc-900/50 border-zinc-800' : 'bg-white border-zinc-100 shadow-sm'}`}>
               
-              {/* Ders Adı */}
+              {/* Ders Adı (KİLİTLİ) */}
               <input 
                 type="text" 
                 value={course.name} 
-                onChange={(e) => updateCourse(course.id, 'name', e.target.value)}
-                className={`flex-grow bg-transparent border-none outline-none text-sm font-medium ${darkMode ? 'text-white placeholder:text-zinc-700' : 'text-zinc-800 placeholder:text-zinc-300'}`}
-                placeholder="Ders Adı"
+                readOnly={true} 
+                className={`flex-grow bg-transparent border-none outline-none text-sm font-medium cursor-default ${darkMode ? 'text-zinc-400' : 'text-zinc-700'}`}
               />
 
-              {/* Kredi */}
+              {/* Kredi (KİLİTLİ) */}
               <div className="flex flex-col items-center w-12">
                 <label className="text-[8px] font-bold text-zinc-500 uppercase">KREDİ</label>
                 <input 
                   type="number" 
                   value={course.credit} 
-                  onChange={(e) => updateCourse(course.id, 'credit', e.target.value)}
-                  className={`w-full text-center bg-transparent border-none outline-none font-bold ${darkMode ? 'text-zinc-300' : 'text-zinc-600'}`}
+                  readOnly={true}
+                  className={`w-full text-center bg-transparent border-none outline-none font-bold cursor-default ${darkMode ? 'text-zinc-500' : 'text-zinc-400'}`}
                 />
               </div>
 
-              {/* Not (100 üzerinden) */}
+              {/* Not (100 üzerinden - DEĞİŞTİRİLEBİLİR) */}
               <div className="flex flex-col items-center w-16">
                  <label className="text-[8px] font-bold text-zinc-500 uppercase">PUAN</label>
                  <input 
@@ -153,22 +148,16 @@ export default function Home() {
                   placeholder="-"
                   min="0"
                   max="100"
-                  onChange={(e) => updateCourse(course.id, 'score', e.target.value)}
+                  onChange={(e) => updateScore(course.id, e.target.value)}
                   className={`w-full bg-transparent text-center font-bold outline-none text-lg ${darkMode ? 'text-emerald-400 placeholder:text-zinc-800' : 'text-emerald-600 placeholder:text-zinc-200'}`}
                  />
               </div>
 
-              {/* Sil Butonu */}
-              <button onClick={() => removeCourse(course.id)} className="text-zinc-500 hover:text-red-500 transition-colors px-1">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-              </button>
+              {/* Sil butonu kaldırıldı, burası boş */}
             </div>
           ))}
-
-          {/* Ders Ekle Butonu */}
-          <button onClick={addCourse} className={`w-full py-3 rounded-xl border border-dashed text-xs font-bold uppercase tracking-wider transition-all ${darkMode ? 'border-zinc-800 text-zinc-600 hover:bg-zinc-900 hover:text-zinc-400' : 'border-zinc-200 text-zinc-400 hover:bg-zinc-50 hover:text-zinc-600'}`}>
-            + Ders Ekle
-          </button>
+          
+          {/* Ekleme butonu kaldırıldı */}
         </div>
 
         {/* Sonuç Alanı */}
