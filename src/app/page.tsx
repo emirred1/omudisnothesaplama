@@ -8,25 +8,24 @@ import { useState, useEffect } from 'react';
 
 const UNI_NAME_LINE1 = "Ondokuz Mayıs Üniversitesi"; 
 const UNI_NAME_LINE2 = "Diş Hekimliği Fakültesi";
-const BASLIK_ALT = "DÖNEMLİK ORTALAMA HESAPLA"; 
+const BASLIK_ALT = "ORTALAMA HESAPLAMA"; 
 
 // --- GÜZ DÖNEMİ DERSLERİ ---
 const GUZ_DERSLERI = [
-  { id: 1, name: 'Anatomi I', credit: 2, score: '' },
-  { id: 2, name: 'Fizyoloji I', credit: 2, score: '' },
-  { id: 3, name: 'Histoloji I', credit: 2, score: '' },
+  { id: 1, name: 'Anatomi', credit: 2, score: '' },
+  { id: 2, name: 'Fizyoloji', credit: 2, score: '' },
+  { id: 3, name: 'Histoloji', credit: 2, score: '' },
   { id: 4, name: 'Organik Kimya', credit: 2, score: '' },
   { id: 5, name: 'Diş Anatomisi ve Fizyolojisi I', credit: 1, score: '' },
   { id: 6, name: 'Dental Materyaller I', credit: 1, score: '' },
   { id: 7, name: 'Tıbbi Biyokimya', credit: 2, score: '' },
   { id: 8, name: 'Tıbbi Biyoloji ve Genetik', credit: 2, score: '' },
-  { id: 9, name: 'Öğrenci Oryantasyonu', credit: 1, score: '' },
-  { id: 10, name: 'Anatomi Pratik I', credit: 1, score: '' },
-  { id: 11, name: 'Histoloji Pratik I', credit: 0.5, score: '' },
+  { id: 9, name: 'Öğrenci Oryantasyonu ve Diş Hekimliği Tarihi', credit: 1, score: '' },
+  { id: 10, name: 'Anatomi Pratik', credit: 1, score: '' },
+  { id: 11, name: 'Histoloji Pratik', credit: 0.5, score: '' },
 ];
 
 // --- BAHAR DÖNEMİ DERSLERİ ---
-// (Burayı kendi bahar derslerine göre düzenleyebilirsin)
 const BAHAR_DERSLERI = [
   { id: 101, name: 'Anatomi', credit: 2, score: '' },
   { id: 102, name: 'Fizyoloji', credit: 2, score: '' },
@@ -45,66 +44,91 @@ const BAHAR_DERSLERI = [
 // ==========================================
 
 export default function Home() {
-  // State yapısını güncelledik: Artık içinde guz ve bahar diye iki ayrı liste var
   const [allCourses, setAllCourses] = useState({
     guz: GUZ_DERSLERI,
     bahar: BAHAR_DERSLERI
   });
   
-  const [activeTab, setActiveTab] = useState('guz'); // 'guz' veya 'bahar'
-  const [average, setAverage] = useState('0.00');
+  const [activeTab, setActiveTab] = useState('guz');
+  const [results, setResults] = useState({
+    guzAvg: 0,
+    baharAvg: 0,
+    vizeAvg: 0,
+    neededFinal: 0
+  });
+
   const [darkMode, setDarkMode] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
 
   // Kayıtlı verileri yükle
   useEffect(() => {
-    const savedTheme = localStorage.getItem('uni_theme_v4');
-    const savedData = localStorage.getItem('uni_data_v4');
+    const savedTheme = localStorage.getItem('uni_theme_v5');
+    const savedData = localStorage.getItem('uni_data_v5');
 
     if (savedTheme === 'dark') setDarkMode(true);
     if (savedData) setAllCourses(JSON.parse(savedData));
     setIsLoaded(true);
   }, []);
 
-  // Değişiklikleri kaydet
+  // Değişiklikleri kaydet ve hesapla
   useEffect(() => {
     if (isLoaded) {
-      localStorage.setItem('uni_theme_v4', darkMode ? 'dark' : 'light');
-      localStorage.setItem('uni_data_v4', JSON.stringify(allCourses));
+      localStorage.setItem('uni_theme_v5', darkMode ? 'dark' : 'light');
+      localStorage.setItem('uni_data_v5', JSON.stringify(allCourses));
     }
+    calculateAll();
   }, [allCourses, darkMode, isLoaded]);
 
-  // Sekme veya notlar değişince ortalamayı yeniden hesapla
-  useEffect(() => {
-    calculateAverage();
-  }, [allCourses, activeTab]);
-
-  const calculateAverage = () => {
-    // Şu an hangi sekmedeysek o dersleri alalım
-    const currentCourses = activeTab === 'guz' ? allCourses.guz : allCourses.bahar;
-
+  // --- HESAPLAMA FONKSİYONLARI ---
+  
+  const getAverageOfList = (list: typeof GUZ_DERSLERI) => {
     let totalWeightedScore = 0;
     let totalCredits = 0;
 
-    currentCourses.forEach(course => {
+    list.forEach(course => {
       if (course.score !== '' && course.credit) {
         const scoreVal = parseFloat(course.score.toString());
         const creditVal = parseFloat(course.credit.toString());
-        
         totalWeightedScore += scoreVal * creditVal;
         totalCredits += creditVal;
       }
     });
 
-    if (totalCredits === 0) setAverage('0.00');
-    else setAverage((totalWeightedScore / totalCredits).toFixed(2));
+    if (totalCredits === 0) return 0;
+    return totalWeightedScore / totalCredits;
+  };
+
+  const calculateAll = () => {
+    const guz = getAverageOfList(allCourses.guz);
+    const bahar = getAverageOfList(allCourses.bahar);
+    
+    // Güz (%25) + Bahar (%25) = Vize Ortalaması (Yıl içinin %50'si)
+    // Aslında matematiksel olarak (Güz + Bahar) / 2 bize 100 üzerinden vize ortalamasını verir.
+    const vize = (guz + bahar) / 2;
+
+    // Hedef: (Güz * 0.25) + (Bahar * 0.25) + (Final * 0.50) >= 59.5
+    // Yani: (Vize * 0.50) + (Final * 0.50) >= 59.5
+    // Final * 0.50 >= 59.5 - (Vize * 0.50)
+    // Final >= (59.5 - (Vize * 0.50)) / 0.50
+    
+    const currentPoints = vize * 0.5;
+    let needed = (GECME_NOTU - currentPoints) / 0.5;
+
+    // Eğer zaten geçtiyse (needed negatif çıkarsa) 0 gösterelim
+    if (needed < 0) needed = 0;
+
+    setResults({
+      guzAvg: guz,
+      baharAvg: bahar,
+      vizeAvg: vize,
+      neededFinal: needed
+    });
   };
 
   const updateScore = (id: number, value: string) => {
     if (Number(value) > 100) return;
     if (Number(value) < 0) return;
 
-    // Hangi dönemdeysek o dönemin listesini güncelle
     setAllCourses(prev => ({
       ...prev,
       [activeTab]: prev[activeTab as 'guz' | 'bahar'].map(c => c.id === id ? { ...c, score: value } : c)
@@ -112,9 +136,7 @@ export default function Home() {
   };
 
   const resetCurrentScores = () => {
-    // Sadece aktif olan dönemi sıfırla
     const cleanList = (activeTab === 'guz' ? GUZ_DERSLERI : BAHAR_DERSLERI).map(c => ({...c, score: ''}));
-    
     setAllCourses(prev => ({
       ...prev,
       [activeTab]: cleanList
@@ -123,7 +145,6 @@ export default function Home() {
 
   if (!isLoaded) return null;
 
-  // Şu an ekranda gösterilecek liste
   const displayCourses = activeTab === 'guz' ? allCourses.guz : allCourses.bahar;
 
   return (
@@ -151,20 +172,10 @@ export default function Home() {
           </h1>
           <p className="text-zinc-500 text-[10px] mt-3 font-medium uppercase tracking-[0.3em]">{BASLIK_ALT}</p>
         
-          {/* SEKME (TAB) DEĞİŞTİRİCİ */}
+          {/* SEKME (TAB) */}
           <div className={`mt-8 inline-flex p-1 rounded-2xl transition-all ${darkMode ? 'bg-zinc-900 border border-zinc-800' : 'bg-zinc-200/50'}`}>
-             <button 
-                onClick={() => setActiveTab('guz')} 
-                className={`px-8 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all duration-300 ${activeTab === 'guz' ? (darkMode ? 'bg-zinc-800 text-white shadow-lg' : 'bg-white text-zinc-900 shadow-md') : 'text-zinc-500 hover:text-zinc-400'}`}
-             >
-                Güz
-             </button>
-             <button 
-                onClick={() => setActiveTab('bahar')} 
-                className={`px-8 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all duration-300 ${activeTab === 'bahar' ? (darkMode ? 'bg-zinc-800 text-white shadow-lg' : 'bg-white text-zinc-900 shadow-md') : 'text-zinc-500 hover:text-zinc-400'}`}
-             >
-                Bahar
-             </button>
+             <button onClick={() => setActiveTab('guz')} className={`px-8 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all duration-300 ${activeTab === 'guz' ? (darkMode ? 'bg-zinc-800 text-white shadow-lg' : 'bg-white text-zinc-900 shadow-md') : 'text-zinc-500 hover:text-zinc-400'}`}>Güz</button>
+             <button onClick={() => setActiveTab('bahar')} className={`px-8 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all duration-300 ${activeTab === 'bahar' ? (darkMode ? 'bg-zinc-800 text-white shadow-lg' : 'bg-white text-zinc-900 shadow-md') : 'text-zinc-500 hover:text-zinc-400'}`}>Bahar</button>
           </div>
         </header>
 
@@ -172,60 +183,68 @@ export default function Home() {
         <div className="space-y-3 mb-6">
           {displayCourses.map((course) => (
             <div key={course.id} className={`flex items-center gap-3 p-3 rounded-2xl border transition-colors ${darkMode ? 'bg-zinc-900/50 border-zinc-800' : 'bg-white border-zinc-100 shadow-sm'}`}>
-              
-              <input 
-                type="text" 
-                value={course.name} 
-                readOnly={true} 
-                className={`flex-grow bg-transparent border-none outline-none text-sm font-medium cursor-default ${darkMode ? 'text-zinc-400' : 'text-zinc-700'}`}
-              />
-
+              <input type="text" value={course.name} readOnly={true} className={`flex-grow bg-transparent border-none outline-none text-sm font-medium cursor-default ${darkMode ? 'text-zinc-400' : 'text-zinc-700'}`} />
               <div className="flex flex-col items-center w-12">
                 <label className="text-[8px] font-bold text-zinc-500 uppercase">KREDİ</label>
-                <input 
-                  type="number" 
-                  value={course.credit} 
-                  readOnly={true}
-                  className={`w-full text-center bg-transparent border-none outline-none font-bold cursor-default ${darkMode ? 'text-zinc-500' : 'text-zinc-400'}`}
-                />
+                <input type="number" value={course.credit} readOnly={true} className={`w-full text-center bg-transparent border-none outline-none font-bold cursor-default ${darkMode ? 'text-zinc-500' : 'text-zinc-400'}`} />
               </div>
-
               <div className="flex flex-col items-center w-16">
                  <label className="text-[8px] font-bold text-zinc-500 uppercase">PUAN</label>
-                 <input 
-                  type="number" 
-                  value={course.score}
-                  placeholder="-"
-                  min="0"
-                  max="100"
-                  onChange={(e) => updateScore(course.id, e.target.value)}
-                  className={`w-full bg-transparent text-center font-bold outline-none text-lg ${darkMode ? 'text-emerald-400 placeholder:text-zinc-800' : 'text-emerald-600 placeholder:text-zinc-200'}`}
-                 />
+                 <input type="number" value={course.score} placeholder="-" min="0" max="100" onChange={(e) => updateScore(course.id, e.target.value)} className={`w-full bg-transparent text-center font-bold outline-none text-lg ${darkMode ? 'text-emerald-400 placeholder:text-zinc-800' : 'text-emerald-600 placeholder:text-zinc-200'}`} />
               </div>
             </div>
           ))}
         </div>
 
-        {/* Sonuç Alanı */}
-        <div className={`mt-2 rounded-[32px] p-8 transition-all duration-500 flex flex-col items-center justify-center ${
-           darkMode ? 'bg-zinc-900/80 text-white border border-zinc-700 shadow-2xl' : 'bg-white text-zinc-900 shadow-xl border border-zinc-50'
-        }`}>
-          <div className="flex justify-between items-end w-full">
-            <div className="text-left">
-              <p className="text-[10px] font-bold uppercase tracking-widest mb-1 text-zinc-500">
-                {activeTab === 'guz' ? 'Güz Dönemi' : 'Bahar Dönemi'} Ort.
-              </p>
-              <p className={`text-6xl font-black tracking-tighter transition-all duration-300 ${Number(average) >= 60 ? 'text-emerald-500' : 'text-red-500'}`}>
-                {average}
-              </p>
+        {/* --- YENİ SONUÇ ALANI (ÖZET TABLOSU) --- */}
+        <div className={`mt-2 rounded-[32px] p-6 transition-all duration-500 flex flex-col gap-6 ${darkMode ? 'bg-zinc-900/80 text-white border border-zinc-700 shadow-2xl' : 'bg-white text-zinc-900 shadow-xl border border-zinc-50'}`}>
+          
+          {/* Üst Satır: Güz ve Bahar Ortalamaları */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className={`p-4 rounded-2xl text-center ${darkMode ? 'bg-zinc-800/50' : 'bg-zinc-50'}`}>
+              <p className="text-[9px] font-bold uppercase tracking-widest text-zinc-500 mb-1">Güz Ort.</p>
+              <p className="text-2xl font-bold">{results.guzAvg.toFixed(2)}</p>
             </div>
-            <div className="text-right flex flex-col items-end">
-              <p className="text-[10px] font-bold uppercase tracking-widest opacity-60 mb-1">Toplam Kredi</p>
-              <p className="text-2xl font-bold tracking-tight text-zinc-400">
-                {displayCourses.reduce((acc, curr) => acc + (curr.score !== '' ? Number(curr.credit) : 0), 0)}
-              </p>
+            <div className={`p-4 rounded-2xl text-center ${darkMode ? 'bg-zinc-800/50' : 'bg-zinc-50'}`}>
+              <p className="text-[9px] font-bold uppercase tracking-widest text-zinc-500 mb-1">Bahar Ort.</p>
+              <p className="text-2xl font-bold">{results.baharAvg.toFixed(2)}</p>
             </div>
           </div>
+
+          {/* Orta Satır: Genel Vize Ortalaması */}
+          <div className="text-center">
+             <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500 mb-1">GENEL VİZE ORTALAMASI</p>
+             <p className={`text-5xl font-black tracking-tighter ${darkMode ? 'text-white' : 'text-zinc-800'}`}>
+               {results.vizeAvg.toFixed(2)}
+             </p>
+             <p className="text-[9px] text-zinc-400 mt-1">(%50 Etkili)</p>
+          </div>
+
+          {/* Alt Satır: GEREKEN FİNAL NOTU */}
+          <div className={`p-6 rounded-2xl text-center border-2 border-dashed transition-all ${
+             results.neededFinal > 100 
+               ? (darkMode ? 'border-red-900/50 bg-red-900/10' : 'border-red-200 bg-red-50') 
+               : (results.neededFinal === 0 ? (darkMode ? 'border-emerald-900/50 bg-emerald-900/10' : 'border-emerald-200 bg-emerald-50') : (darkMode ? 'border-zinc-700 bg-zinc-800/50' : 'border-zinc-200 bg-zinc-50'))
+          }`}>
+             <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500 mb-2">FİNALDEN ALMAN GEREKEN</p>
+             
+             {results.neededFinal > 100 ? (
+               <div>
+                 <p className="text-3xl font-black text-red-500">İMKANSIZ</p>
+                 <p className="text-[10px] text-red-400 mt-1">({results.neededFinal.toFixed(1)} gerekiyor)</p>
+               </div>
+             ) : results.neededFinal === 0 ? (
+               <div>
+                 <p className="text-3xl font-black text-emerald-500">GEÇTİNİZ! 🎉</p>
+                 <p className="text-[10px] text-emerald-600 mt-1">Vize ortalamanız {GECME_NOTU}'i geçti.</p>
+               </div>
+             ) : (
+               <p className={`text-4xl font-black ${darkMode ? 'text-white' : 'text-zinc-900'}`}>
+                 {results.neededFinal.toFixed(1)}
+               </p>
+             )}
+          </div>
+
         </div>
 
       </div>
