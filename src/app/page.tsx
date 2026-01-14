@@ -10,17 +10,16 @@ const UNI_NAME_LINE1 = "Ondokuz Mayıs Üniversitesi";
 const UNI_NAME_LINE2 = "Diş Hekimliği Fakültesi";
 const BASLIK_ALT = "ORTALAMA HESAPLAMA"; 
 
-// --- DEĞİŞİKLİK 1: Geçme notu 60 yapıldı ---
 const GECME_NOTU = 60; 
 
-// --- GÜZ DÖNEMİ DERSLERİ ---
-const GUZ_DERSLERI = [
+// --- 1. SINIF DERSLERİ ---
+const GUZ_DERSLERI_1 = [
   { id: 1, name: 'Anatomi', credit: 2, score: '' },
   { id: 2, name: 'Fizyoloji', credit: 2, score: '' },
   { id: 3, name: 'Histoloji', credit: 2, score: '' },
   { id: 4, name: 'Organik Kimya', credit: 2, score: '' },
-  { id: 5, name: 'Diş Anatomisi ve Fizyolojisi', credit: 1, score: '' },
-  { id: 6, name: 'Dental Materyaller', credit: 1, score: '' },
+  { id: 5, name: 'Diş Anatomisi ve Fizyolojisi I', credit: 1, score: '' },
+  { id: 6, name: 'Dental Materyaller I', credit: 1, score: '' },
   { id: 7, name: 'Tıbbi Biyokimya', credit: 2, score: '' },
   { id: 8, name: 'Tıbbi Biyoloji ve Genetik', credit: 2, score: '' },
   { id: 9, name: 'Öğrenci Oryantasyonu ve Diş Hekimliği Tarihi', credit: 1, score: '' },
@@ -28,8 +27,7 @@ const GUZ_DERSLERI = [
   { id: 11, name: 'Histoloji Pratik', credit: 0.5, score: '' },
 ];
 
-// --- BAHAR DÖNEMİ DERSLERİ ---
-const BAHAR_DERSLERI = [
+const BAHAR_DERSLERI_1 = [
   { id: 101, name: 'Anatomi', credit: 2, score: '' },
   { id: 102, name: 'Fizyoloji', credit: 2, score: '' },
   { id: 103, name: 'Histoloji', credit: 2, score: '' },
@@ -42,17 +40,48 @@ const BAHAR_DERSLERI = [
   { id: 111, name: 'Histoloji Pratik', credit: 0.5, score: '' },
 ];
 
+// --- 2. SINIF DERSLERİ (TAHMİNİ OMÜ MÜFREDATI) ---
+const GUZ_DERSLERI_2 = [
+  { id: 201, name: 'Protetik Diş Tedavisi', credit: 2, score: '' },
+  { id: 202, name: 'Restoratif Diş Tedavisi', credit: 2, score: '' },
+  { id: 203, name: 'Endodonti', credit: 2, score: '' },
+  { id: 204, name: 'Patoloji', credit: 1, score: '' },
+  { id: 205, name: 'Mikrobiyoloji', credit: 1, score: '' },
+  { id: 206, name: 'Periodontoloji', credit: 1, score: '' },
+  { id: 207, name: 'Pedodonti', credit: 1, score: '' },
+  { id: 208, name: 'Farmakoloji', credit: 1, score: '' },
+];
+
+const BAHAR_DERSLERI_2 = [
+  { id: 301, name: 'Protetik Diş Tedavisi', credit: 2, score: '' },
+  { id: 302, name: 'Restoratif Diş Tedavisi', credit: 2, score: '' },
+  { id: 303, name: 'Endodonti', credit: 2, score: '' },
+  { id: 304, name: 'Ağız Diş ve Çene Radyolojisi', credit: 1, score: '' },
+  { id: 305, name: 'Ağız Diş ve Çene Cerrahisi', credit: 2, score: '' },
+  { id: 306, name: 'Periodontoloji I', credit: 1, score: '' },
+  { id: 307, name: 'Kariyer Planlama', credit: 1, score: '' },
+];
+
 // ==========================================
 // KODUN GERİ KALANI
 // ==========================================
 
 export default function Home() {
+  // State yapısı: Sınıf -> Dönem -> Dersler
   const [allCourses, setAllCourses] = useState({
-    guz: GUZ_DERSLERI,
-    bahar: BAHAR_DERSLERI
+    sinif1: {
+      guz: GUZ_DERSLERI_1,
+      bahar: BAHAR_DERSLERI_1
+    },
+    sinif2: {
+      guz: GUZ_DERSLERI_2,
+      bahar: BAHAR_DERSLERI_2
+    }
   });
   
-  const [activeTab, setActiveTab] = useState('guz');
+  const [activeClass, setActiveClass] = useState('sinif1'); // 'sinif1' veya 'sinif2'
+  const [activeTab, setActiveTab] = useState('guz'); // 'guz' veya 'bahar'
+  
   const [results, setResults] = useState({
     guzAvg: 0,
     baharAvg: 0,
@@ -63,28 +92,31 @@ export default function Home() {
   const [darkMode, setDarkMode] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Kayıtlı verileri yükle
+  // Kayıtlı verileri yükle (v7 versiyonu)
   useEffect(() => {
-    const savedTheme = localStorage.getItem('uni_theme_v6');
-    const savedData = localStorage.getItem('uni_data_v6');
+    const savedTheme = localStorage.getItem('uni_theme_v7');
+    const savedData = localStorage.getItem('uni_data_v7');
+    const savedClass = localStorage.getItem('uni_class_v7');
 
     if (savedTheme === 'dark') setDarkMode(true);
     if (savedData) setAllCourses(JSON.parse(savedData));
+    if (savedClass) setActiveClass(savedClass);
     setIsLoaded(true);
   }, []);
 
-  // Değişiklikleri kaydet ve hesapla
+  // Değişiklikleri kaydet
   useEffect(() => {
     if (isLoaded) {
-      localStorage.setItem('uni_theme_v6', darkMode ? 'dark' : 'light');
-      localStorage.setItem('uni_data_v6', JSON.stringify(allCourses));
+      localStorage.setItem('uni_theme_v7', darkMode ? 'dark' : 'light');
+      localStorage.setItem('uni_data_v7', JSON.stringify(allCourses));
+      localStorage.setItem('uni_class_v7', activeClass);
     }
     calculateAll();
-  }, [allCourses, darkMode, isLoaded]);
+  }, [allCourses, activeClass, darkMode, isLoaded]);
 
   // --- HESAPLAMA FONKSİYONLARI ---
   
-  const getAverageOfList = (list: typeof GUZ_DERSLERI) => {
+  const getAverageOfList = (list: any[]) => {
     let totalWeightedScore = 0;
     let totalCredits = 0;
 
@@ -102,24 +134,22 @@ export default function Home() {
   };
 
   const calculateAll = () => {
-    let guz = getAverageOfList(allCourses.guz);
-    let bahar = getAverageOfList(allCourses.bahar);
+    // Sadece aktif olan sınıfın verilerini alıp hesaplıyoruz
+    const currentClassData = allCourses[activeClass as 'sinif1' | 'sinif2'];
     
-    // --- DEĞİŞİKLİK 2: Ortalamaları Yuvarla (0.5 ve üzeri yukarı) ---
+    let guz = getAverageOfList(currentClassData.guz);
+    let bahar = getAverageOfList(currentClassData.bahar);
+    
+    // Yuvarlama işlemleri
     guz = Math.round(guz);
     bahar = Math.round(bahar);
 
-    // Vize Ortalaması = (Yuvarlanmış Güz + Yuvarlanmış Bahar) / 2
     let vize = (guz + bahar) / 2;
-    
-    // Vize ortalamasını da yuvarlıyoruz (Örn: 59.5 -> 60 olsun diye)
     vize = Math.round(vize);
 
-    // Hedef: (Vize * 0.50) + (Final * 0.50) >= GECME_NOTU
     const currentPoints = vize * 0.5;
     let needed = (GECME_NOTU - currentPoints) / 0.5;
 
-    // Eğer zaten geçtiyse (needed negatif çıkarsa) 0 gösterelim
     if (needed < 0) needed = 0;
 
     setResults({
@@ -136,21 +166,34 @@ export default function Home() {
 
     setAllCourses(prev => ({
       ...prev,
-      [activeTab]: prev[activeTab as 'guz' | 'bahar'].map(c => c.id === id ? { ...c, score: value } : c)
+      [activeClass]: {
+        ...prev[activeClass as 'sinif1' | 'sinif2'],
+        [activeTab]: prev[activeClass as 'sinif1' | 'sinif2'][activeTab as 'guz' | 'bahar'].map(c => c.id === id ? { ...c, score: value } : c)
+      }
     }));
   };
 
   const resetCurrentScores = () => {
-    const cleanList = (activeTab === 'guz' ? GUZ_DERSLERI : BAHAR_DERSLERI).map(c => ({...c, score: ''}));
+    // Aktif sınıfın aktif dönemini temizle
+    const defaultList = activeClass === 'sinif1' 
+      ? (activeTab === 'guz' ? GUZ_DERSLERI_1 : BAHAR_DERSLERI_1)
+      : (activeTab === 'guz' ? GUZ_DERSLERI_2 : BAHAR_DERSLERI_2);
+
+    const cleanList = defaultList.map(c => ({...c, score: ''}));
+    
     setAllCourses(prev => ({
       ...prev,
-      [activeTab]: cleanList
+      [activeClass]: {
+        ...prev[activeClass as 'sinif1' | 'sinif2'],
+        [activeTab]: cleanList
+      }
     }));
   };
 
   if (!isLoaded) return null;
 
-  const displayCourses = activeTab === 'guz' ? allCourses.guz : allCourses.bahar;
+  // Şu an ekranda gösterilecek dersleri seç
+  const displayCourses = allCourses[activeClass as 'sinif1' | 'sinif2'][activeTab as 'guz' | 'bahar'];
 
   return (
     <main className={`min-h-screen transition-all duration-700 flex flex-col items-center justify-center p-6 text-[13px] ${darkMode ? 'bg-black text-zinc-100' : 'bg-zinc-50 text-zinc-900'}`}>
@@ -177,8 +220,24 @@ export default function Home() {
           </h1>
           <p className="text-zinc-500 text-[10px] mt-3 font-medium uppercase tracking-[0.3em]">{BASLIK_ALT}</p>
         
-          {/* SEKME (TAB) */}
-          <div className={`mt-8 inline-flex p-1 rounded-2xl transition-all ${darkMode ? 'bg-zinc-900 border border-zinc-800' : 'bg-zinc-200/50'}`}>
+          {/* SINIF SEÇİMİ (YENİ EKLENDİ) */}
+          <div className="mt-8 mb-4 flex justify-center gap-4">
+             <button 
+                onClick={() => setActiveClass('sinif1')} 
+                className={`text-sm font-bold uppercase tracking-wider transition-all duration-300 ${activeClass === 'sinif1' ? (darkMode ? 'text-white border-b-2 border-white' : 'text-zinc-900 border-b-2 border-zinc-900') : 'text-zinc-500 hover:text-zinc-400'}`}
+             >
+                1. Sınıf
+             </button>
+             <button 
+                onClick={() => setActiveClass('sinif2')} 
+                className={`text-sm font-bold uppercase tracking-wider transition-all duration-300 ${activeClass === 'sinif2' ? (darkMode ? 'text-white border-b-2 border-white' : 'text-zinc-900 border-b-2 border-zinc-900') : 'text-zinc-500 hover:text-zinc-400'}`}
+             >
+                2. Sınıf
+             </button>
+          </div>
+
+          {/* DÖNEM SEÇİMİ (TAB) */}
+          <div className={`inline-flex p-1 rounded-2xl transition-all ${darkMode ? 'bg-zinc-900 border border-zinc-800' : 'bg-zinc-200/50'}`}>
              <button onClick={() => setActiveTab('guz')} className={`px-8 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all duration-300 ${activeTab === 'guz' ? (darkMode ? 'bg-zinc-800 text-white shadow-lg' : 'bg-white text-zinc-900 shadow-md') : 'text-zinc-500 hover:text-zinc-400'}`}>Güz</button>
              <button onClick={() => setActiveTab('bahar')} className={`px-8 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all duration-300 ${activeTab === 'bahar' ? (darkMode ? 'bg-zinc-800 text-white shadow-lg' : 'bg-white text-zinc-900 shadow-md') : 'text-zinc-500 hover:text-zinc-400'}`}>Bahar</button>
           </div>
@@ -208,7 +267,6 @@ export default function Home() {
           <div className="grid grid-cols-2 gap-4">
             <div className={`p-4 rounded-2xl text-center ${darkMode ? 'bg-zinc-800/50' : 'bg-zinc-50'}`}>
               <p className="text-[9px] font-bold uppercase tracking-widest text-zinc-500 mb-1">Güz Ort.</p>
-              {/* .toFixed(0) kullanarak tam sayı gösteriyoruz */}
               <p className="text-2xl font-bold">{results.guzAvg.toFixed(0)}</p>
             </div>
             <div className={`p-4 rounded-2xl text-center ${darkMode ? 'bg-zinc-800/50' : 'bg-zinc-50'}`}>
