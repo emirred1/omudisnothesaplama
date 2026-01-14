@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 
 // ==========================================
 // 1. AYARLAR VE MÜFREDAT
@@ -76,9 +76,6 @@ export default function Home() {
   const [activeClass, setActiveClass] = useState('sinif1');
   const [activeTab, setActiveTab] = useState('guz');
   
-  // Animasyon yönü: 'from-right' (sağdan gelir) veya 'from-left' (soldan gelir)
-  const [slideDirection, setSlideDirection] = useState('from-right');
-  
   const [results, setResults] = useState({
     guzAvg: 0, baharAvg: 0, vizeAvg: 0, neededFinal: 0
   });
@@ -87,9 +84,9 @@ export default function Home() {
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem('uni_theme_v8');
-    const savedData = localStorage.getItem('uni_data_v8');
-    const savedClass = localStorage.getItem('uni_class_v8');
+    const savedTheme = localStorage.getItem('uni_theme_v9');
+    const savedData = localStorage.getItem('uni_data_v9');
+    const savedClass = localStorage.getItem('uni_class_v9');
 
     if (savedTheme === 'dark') setDarkMode(true);
     if (savedData) setAllCourses(JSON.parse(savedData));
@@ -99,28 +96,14 @@ export default function Home() {
 
   useEffect(() => {
     if (isLoaded) {
-      localStorage.setItem('uni_theme_v8', darkMode ? 'dark' : 'light');
-      localStorage.setItem('uni_data_v8', JSON.stringify(allCourses));
-      localStorage.setItem('uni_class_v8', activeClass);
+      localStorage.setItem('uni_theme_v9', darkMode ? 'dark' : 'light');
+      localStorage.setItem('uni_data_v9', JSON.stringify(allCourses));
+      localStorage.setItem('uni_class_v9', activeClass);
     }
     calculateAll();
   }, [allCourses, activeClass, darkMode, isLoaded]);
 
-  // --- GEÇİŞ MANTIĞI ---
-  const changeClass = (newClass: string) => {
-    if (newClass === activeClass) return;
-    // Eğer Dönem 2'ye geçiyorsak sağdan gelsin, Dönem 1'e dönüyorsak soldan
-    setSlideDirection(newClass === 'sinif2' ? 'from-right' : 'from-left');
-    setActiveClass(newClass);
-  };
-
-  const changeTab = (newTab: string) => {
-    if (newTab === activeTab) return;
-    // Eğer Bahar'a geçiyorsak sağdan gelsin, Güz'e dönüyorsak soldan
-    setSlideDirection(newTab === 'bahar' ? 'from-right' : 'from-left');
-    setActiveTab(newTab);
-  };
-
+  // --- HESAPLAMA ---
   const getAverageOfList = (list: any[]) => {
     let totalWeightedScore = 0;
     let totalCredits = 0;
@@ -150,7 +133,9 @@ export default function Home() {
     setResults({ guzAvg: guz, baharAvg: bahar, vizeAvg: vize, neededFinal: needed });
   };
 
-  const updateScore = (id: number, value: string) => {
+  // NOT: Artık hem Güz hem Bahar aynı anda render edildiği için
+  // updateScore fonksiyonunun hangi dönemi güncellediğini bilmesi gerek.
+  const updateScore = (id: number, value: string, period: 'guz' | 'bahar') => {
     if (Number(value) > 100) return;
     if (Number(value) < 0) return;
 
@@ -158,7 +143,7 @@ export default function Home() {
       ...prev,
       [activeClass]: {
         ...prev[activeClass as 'sinif1' | 'sinif2'],
-        [activeTab]: prev[activeClass as 'sinif1' | 'sinif2'][activeTab as 'guz' | 'bahar'].map(c => c.id === id ? { ...c, score: value } : c)
+        [period]: prev[activeClass as 'sinif1' | 'sinif2'][period].map(c => c.id === id ? { ...c, score: value } : c)
       }
     }));
   };
@@ -169,6 +154,7 @@ export default function Home() {
       : (activeTab === 'guz' ? GUZ_DERSLERI_2 : BAHAR_DERSLERI_2);
 
     const cleanList = defaultList.map(c => ({...c, score: ''}));
+    
     setAllCourses(prev => ({
       ...prev,
       [activeClass]: {
@@ -180,33 +166,12 @@ export default function Home() {
 
   if (!isLoaded) return null;
 
-  const displayCourses = allCourses[activeClass as 'sinif1' | 'sinif2'][activeTab as 'guz' | 'bahar'];
+  // Şu anki sınıfın dersleri (Dönem ayrımı yapmadan alıyoruz, çünkü ikisini de çizeceğiz)
+  const currentClassData = allCourses[activeClass as 'sinif1' | 'sinif2'];
 
   return (
     <main className={`min-h-screen transition-all duration-700 flex flex-col items-center justify-center p-6 text-[13px] overflow-hidden ${darkMode ? 'bg-black text-zinc-100' : 'bg-zinc-50 text-zinc-900'}`}>
       
-      {/* --- CSS ANIMASYONLARI --- */}
-      <style jsx global>{`
-        /* Sağdan sola kayarak gelme (İleri gitme hissi) */
-        @keyframes slideFromRight {
-          0% { transform: translateX(100%); opacity: 0; }
-          100% { transform: translateX(0); opacity: 1; }
-        }
-        
-        /* Soldan sağa kayarak gelme (Geri dönme hissi) */
-        @keyframes slideFromLeft {
-          0% { transform: translateX(-100%); opacity: 0; }
-          100% { transform: translateX(0); opacity: 1; }
-        }
-
-        .animate-enter-right {
-          animation: slideFromRight 0.3s cubic-bezier(0.25, 1, 0.5, 1) forwards;
-        }
-        .animate-enter-left {
-          animation: slideFromLeft 0.3s cubic-bezier(0.25, 1, 0.5, 1) forwards;
-        }
-      `}</style>
-
       {/* Sağ Üst Kontroller */}
       <div className="fixed top-6 right-6 flex items-center gap-2 z-50">
         <button onClick={resetCurrentScores} title="Temizle" className={`p-3 rounded-full transition-all active:scale-90 ${darkMode ? 'bg-zinc-900 text-zinc-500 border border-zinc-800' : 'bg-white shadow-sm text-zinc-400 border border-zinc-100'}`}>
@@ -220,8 +185,8 @@ export default function Home() {
         </button>
       </div>
 
-      <div className={`w-full max-w-md flex-grow flex flex-col justify-center py-10`}>
-        <header className="mb-8 text-center">
+      <div className={`w-full max-w-md flex-grow flex flex-col justify-center py-10 overflow-hidden`}>
+        <header className="mb-8 text-center z-10 relative">
           <h1 className={`text-3xl font-light tracking-tight ${darkMode ? 'text-white' : 'text-zinc-800'}`}>
             {UNI_NAME_LINE1}
             <span className="block mt-1 font-medium">{UNI_NAME_LINE2}</span>
@@ -231,58 +196,85 @@ export default function Home() {
           {/* SEÇİM KUTUSU */}
           <div className={`mt-8 inline-flex flex-col p-1.5 rounded-[20px] transition-all w-64 ${darkMode ? 'bg-zinc-900 border border-zinc-800' : 'bg-zinc-100/80 border border-zinc-200'}`}>
             
-            {/* ÜST SATIR: DÖNEM 1 / DÖNEM 2 */}
+            {/* ÜST SATIR: SINIF SEÇİMİ */}
             <div className="relative flex w-full mb-1 bg-transparent h-10 items-center">
               <div className={`absolute top-0 bottom-0 w-[50%] rounded-xl shadow-sm transition-all duration-300 ease-out 
                  ${activeClass === 'sinif1' ? 'translate-x-0' : 'translate-x-full'} 
                  ${darkMode ? 'bg-zinc-800' : 'bg-white'}`} 
               />
-              <button onClick={() => changeClass('sinif1')} className={`flex-1 z-10 text-[11px] font-bold uppercase tracking-wider transition-colors duration-300 ${activeClass === 'sinif1' ? (darkMode ? 'text-white' : 'text-zinc-900') : 'text-zinc-500 hover:text-zinc-400'}`}>
+              <button onClick={() => setActiveClass('sinif1')} className={`flex-1 z-10 text-[11px] font-bold uppercase tracking-wider transition-colors duration-300 ${activeClass === 'sinif1' ? (darkMode ? 'text-white' : 'text-zinc-900') : 'text-zinc-500 hover:text-zinc-400'}`}>
                   DÖNEM 1
               </button>
-              <button onClick={() => changeClass('sinif2')} className={`flex-1 z-10 text-[11px] font-bold uppercase tracking-wider transition-colors duration-300 ${activeClass === 'sinif2' ? (darkMode ? 'text-white' : 'text-zinc-900') : 'text-zinc-500 hover:text-zinc-400'}`}>
+              <button onClick={() => setActiveClass('sinif2')} className={`flex-1 z-10 text-[11px] font-bold uppercase tracking-wider transition-colors duration-300 ${activeClass === 'sinif2' ? (darkMode ? 'text-white' : 'text-zinc-900') : 'text-zinc-500 hover:text-zinc-400'}`}>
                   DÖNEM 2
               </button>
             </div>
 
-            {/* ALT SATIR: GÜZ / BAHAR */}
+            {/* ALT SATIR: DÖNEM SEÇİMİ */}
             <div className="relative flex w-full bg-transparent h-10 items-center">
                <div className={`absolute top-0 bottom-0 w-[50%] rounded-xl shadow-sm transition-all duration-300 ease-out 
                  ${activeTab === 'guz' ? 'translate-x-0' : 'translate-x-full'} 
                  ${darkMode ? 'bg-zinc-800' : 'bg-white'}`} 
                />
-              <button onClick={() => changeTab('guz')} className={`flex-1 z-10 text-[11px] font-bold uppercase tracking-wider transition-colors duration-300 ${activeTab === 'guz' ? (darkMode ? 'text-white' : 'text-zinc-900') : 'text-zinc-500 hover:text-zinc-400'}`}>
+              <button onClick={() => setActiveTab('guz')} className={`flex-1 z-10 text-[11px] font-bold uppercase tracking-wider transition-colors duration-300 ${activeTab === 'guz' ? (darkMode ? 'text-white' : 'text-zinc-900') : 'text-zinc-500 hover:text-zinc-400'}`}>
                 GÜZ
               </button>
-              <button onClick={() => changeTab('bahar')} className={`flex-1 z-10 text-[11px] font-bold uppercase tracking-wider transition-colors duration-300 ${activeTab === 'bahar' ? (darkMode ? 'text-white' : 'text-zinc-900') : 'text-zinc-500 hover:text-zinc-400'}`}>
+              <button onClick={() => setActiveTab('bahar')} className={`flex-1 z-10 text-[11px] font-bold uppercase tracking-wider transition-colors duration-300 ${activeTab === 'bahar' ? (darkMode ? 'text-white' : 'text-zinc-900') : 'text-zinc-500 hover:text-zinc-400'}`}>
                 BAHAR
               </button>
             </div>
           </div>
         </header>
 
-        {/* --- DERS LİSTESİ (KAYMA EFEKTLİ) --- */}
-        <div className="relative overflow-hidden min-h-[400px]">
-             {/* Animasyon konteyneri */}
+        {/* --- DERS LİSTESİ (INSTAGRAM TARZI SLIDER) --- */}
+        {/* Kapsayıcı: Sadece 1 ekran genişliğinde, taşanları gizler */}
+        <div className="relative overflow-hidden w-full">
+             
+             {/* İçteki Uzun Şerit: 2 ekran genişliğinde (%200) */}
+             {/* Güz seçiliyse translateX(0), Bahar seçiliyse translateX(-50%) yani sola kayar */}
              <div 
-                key={`${activeClass}-${activeTab}`}
-                className={`w-full ${slideDirection === 'from-right' ? 'animate-enter-right' : 'animate-enter-left'}`}
+                className={`flex w-[200%] transition-transform duration-500 ease-[cubic-bezier(0.25,1,0.5,1)] ${activeTab === 'guz' ? 'translate-x-0' : '-translate-x-1/2'}`}
              >
-                <div className="space-y-3 mb-6">
-                  {displayCourses.map((course) => (
-                    <div key={course.id} className={`flex items-center gap-3 p-3 rounded-2xl border transition-colors ${darkMode ? 'bg-zinc-900/50 border-zinc-800' : 'bg-white border-zinc-100 shadow-sm'}`}>
-                      <input type="text" value={course.name} readOnly={true} className={`flex-grow bg-transparent border-none outline-none text-sm font-medium cursor-default ${darkMode ? 'text-zinc-400' : 'text-zinc-700'}`} />
-                      <div className="flex flex-col items-center w-12">
-                        <label className="text-[8px] font-bold text-zinc-500 uppercase">KREDİ</label>
-                        <input type="number" value={course.credit} readOnly={true} className={`w-full text-center bg-transparent border-none outline-none font-bold cursor-default ${darkMode ? 'text-zinc-500' : 'text-zinc-400'}`} />
+                {/* SOL TARAF: GÜZ DERSLERİ */}
+                <div className="w-[50%] px-1">
+                  <div className="space-y-3 mb-6">
+                    {currentClassData.guz.map((course) => (
+                      <div key={course.id} className={`flex items-center gap-3 p-3 rounded-2xl border transition-colors ${darkMode ? 'bg-zinc-900/50 border-zinc-800' : 'bg-white border-zinc-100 shadow-sm'}`}>
+                        <input type="text" value={course.name} readOnly={true} className={`flex-grow bg-transparent border-none outline-none text-sm font-medium cursor-default ${darkMode ? 'text-zinc-400' : 'text-zinc-700'}`} />
+                        <div className="flex flex-col items-center w-12">
+                          <label className="text-[8px] font-bold text-zinc-500 uppercase">KREDİ</label>
+                          <input type="number" value={course.credit} readOnly={true} className={`w-full text-center bg-transparent border-none outline-none font-bold cursor-default ${darkMode ? 'text-zinc-500' : 'text-zinc-400'}`} />
+                        </div>
+                        <div className="flex flex-col items-center w-16">
+                          <label className="text-[8px] font-bold text-zinc-500 uppercase">PUAN</label>
+                          {/* ÖNEMLİ: Güncelleme yaparken 'guz' olduğunu belirtiyoruz */}
+                          <input type="number" value={course.score} placeholder="-" min="0" max="100" onChange={(e) => updateScore(course.id, e.target.value, 'guz')} className={`w-full bg-transparent text-center font-bold outline-none text-lg ${darkMode ? 'text-emerald-400 placeholder:text-zinc-800' : 'text-emerald-600 placeholder:text-zinc-200'}`} />
+                        </div>
                       </div>
-                      <div className="flex flex-col items-center w-16">
-                         <label className="text-[8px] font-bold text-zinc-500 uppercase">PUAN</label>
-                         <input type="number" value={course.score} placeholder="-" min="0" max="100" onChange={(e) => updateScore(course.id, e.target.value)} className={`w-full bg-transparent text-center font-bold outline-none text-lg ${darkMode ? 'text-emerald-400 placeholder:text-zinc-800' : 'text-emerald-600 placeholder:text-zinc-200'}`} />
-                      </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
+
+                {/* SAĞ TARAF: BAHAR DERSLERİ */}
+                <div className="w-[50%] px-1">
+                  <div className="space-y-3 mb-6">
+                    {currentClassData.bahar.map((course) => (
+                      <div key={course.id} className={`flex items-center gap-3 p-3 rounded-2xl border transition-colors ${darkMode ? 'bg-zinc-900/50 border-zinc-800' : 'bg-white border-zinc-100 shadow-sm'}`}>
+                        <input type="text" value={course.name} readOnly={true} className={`flex-grow bg-transparent border-none outline-none text-sm font-medium cursor-default ${darkMode ? 'text-zinc-400' : 'text-zinc-700'}`} />
+                        <div className="flex flex-col items-center w-12">
+                          <label className="text-[8px] font-bold text-zinc-500 uppercase">KREDİ</label>
+                          <input type="number" value={course.credit} readOnly={true} className={`w-full text-center bg-transparent border-none outline-none font-bold cursor-default ${darkMode ? 'text-zinc-500' : 'text-zinc-400'}`} />
+                        </div>
+                        <div className="flex flex-col items-center w-16">
+                          <label className="text-[8px] font-bold text-zinc-500 uppercase">PUAN</label>
+                          {/* ÖNEMLİ: Güncelleme yaparken 'bahar' olduğunu belirtiyoruz */}
+                          <input type="number" value={course.score} placeholder="-" min="0" max="100" onChange={(e) => updateScore(course.id, e.target.value, 'bahar')} className={`w-full bg-transparent text-center font-bold outline-none text-lg ${darkMode ? 'text-emerald-400 placeholder:text-zinc-800' : 'text-emerald-600 placeholder:text-zinc-200'}`} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
              </div>
         </div>
 
