@@ -76,6 +76,9 @@ export default function Home() {
   const [activeClass, setActiveClass] = useState('sinif1');
   const [activeTab, setActiveTab] = useState('guz');
   
+  // Animasyon yönünü tutan state ('left' veya 'right')
+  const [animDirection, setAnimDirection] = useState('right');
+  
   const [results, setResults] = useState({
     guzAvg: 0, baharAvg: 0, vizeAvg: 0, neededFinal: 0
   });
@@ -102,6 +105,21 @@ export default function Home() {
     }
     calculateAll();
   }, [allCourses, activeClass, darkMode, isLoaded]);
+
+  // --- ANİMASYONLU GEÇİŞ FONKSİYONLARI ---
+  const handleClassChange = (newClass: string) => {
+    if (newClass === activeClass) return;
+    // Eğer Dönem 2'ye geçiyorsak sağdan, Dönem 1'e dönüyorsak soldan gelsin
+    setAnimDirection(newClass === 'sinif2' ? 'right' : 'left');
+    setActiveClass(newClass);
+  };
+
+  const handleTabChange = (newTab: string) => {
+    if (newTab === activeTab) return;
+    // Eğer Bahar'a geçiyorsak sağdan, Güz'e dönüyorsak soldan gelsin
+    setAnimDirection(newTab === 'bahar' ? 'right' : 'left');
+    setActiveTab(newTab);
+  };
 
   // --- HESAPLAMA ---
   const getAverageOfList = (list: any[]) => {
@@ -168,14 +186,21 @@ export default function Home() {
   return (
     <main className={`min-h-screen transition-all duration-700 flex flex-col items-center justify-center p-6 text-[13px] ${darkMode ? 'bg-black text-zinc-100' : 'bg-zinc-50 text-zinc-900'}`}>
       
-      {/* Özel CSS Animasyonu */}
+      {/* Özel CSS Animasyonları */}
       <style jsx global>{`
-        @keyframes slideIn {
-          from { opacity: 0; transform: translateX(10px); }
+        @keyframes slideInFromRight {
+          from { opacity: 0; transform: translateX(50px); }
           to { opacity: 1; transform: translateX(0); }
         }
-        .animate-slide {
-          animation: slideIn 0.4s ease-out forwards;
+        @keyframes slideInFromLeft {
+          from { opacity: 0; transform: translateX(-50px); }
+          to { opacity: 1; transform: translateX(0); }
+        }
+        .animate-enter-right {
+          animation: slideInFromRight 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        .animate-enter-left {
+          animation: slideInFromLeft 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
       `}</style>
 
@@ -192,7 +217,7 @@ export default function Home() {
         </button>
       </div>
 
-      <div className={`w-full max-w-md flex-grow flex flex-col justify-center py-10`}>
+      <div className={`w-full max-w-md flex-grow flex flex-col justify-center py-10 overflow-hidden`}>
         <header className="mb-8 text-center">
           <h1 className={`text-3xl font-light tracking-tight ${darkMode ? 'text-white' : 'text-zinc-800'}`}>
             {UNI_NAME_LINE1}
@@ -211,10 +236,10 @@ export default function Home() {
                  ${darkMode ? 'bg-zinc-800' : 'bg-white'}`} 
               />
               
-              <button onClick={() => setActiveClass('sinif1')} className={`flex-1 z-10 text-[11px] font-bold uppercase tracking-wider transition-colors duration-300 ${activeClass === 'sinif1' ? (darkMode ? 'text-white' : 'text-zinc-900') : 'text-zinc-500 hover:text-zinc-400'}`}>
+              <button onClick={() => handleClassChange('sinif1')} className={`flex-1 z-10 text-[11px] font-bold uppercase tracking-wider transition-colors duration-300 ${activeClass === 'sinif1' ? (darkMode ? 'text-white' : 'text-zinc-900') : 'text-zinc-500 hover:text-zinc-400'}`}>
                   DÖNEM 1
               </button>
-              <button onClick={() => setActiveClass('sinif2')} className={`flex-1 z-10 text-[11px] font-bold uppercase tracking-wider transition-colors duration-300 ${activeClass === 'sinif2' ? (darkMode ? 'text-white' : 'text-zinc-900') : 'text-zinc-500 hover:text-zinc-400'}`}>
+              <button onClick={() => handleClassChange('sinif2')} className={`flex-1 z-10 text-[11px] font-bold uppercase tracking-wider transition-colors duration-300 ${activeClass === 'sinif2' ? (darkMode ? 'text-white' : 'text-zinc-900') : 'text-zinc-500 hover:text-zinc-400'}`}>
                   DÖNEM 2
               </button>
             </div>
@@ -227,19 +252,22 @@ export default function Home() {
                  ${darkMode ? 'bg-zinc-800' : 'bg-white'}`} 
                />
 
-              <button onClick={() => setActiveTab('guz')} className={`flex-1 z-10 text-[11px] font-bold uppercase tracking-wider transition-colors duration-300 ${activeTab === 'guz' ? (darkMode ? 'text-white' : 'text-zinc-900') : 'text-zinc-500 hover:text-zinc-400'}`}>
+              <button onClick={() => handleTabChange('guz')} className={`flex-1 z-10 text-[11px] font-bold uppercase tracking-wider transition-colors duration-300 ${activeTab === 'guz' ? (darkMode ? 'text-white' : 'text-zinc-900') : 'text-zinc-500 hover:text-zinc-400'}`}>
                 GÜZ
               </button>
-              <button onClick={() => setActiveTab('bahar')} className={`flex-1 z-10 text-[11px] font-bold uppercase tracking-wider transition-colors duration-300 ${activeTab === 'bahar' ? (darkMode ? 'text-white' : 'text-zinc-900') : 'text-zinc-500 hover:text-zinc-400'}`}>
+              <button onClick={() => handleTabChange('bahar')} className={`flex-1 z-10 text-[11px] font-bold uppercase tracking-wider transition-colors duration-300 ${activeTab === 'bahar' ? (darkMode ? 'text-white' : 'text-zinc-900') : 'text-zinc-500 hover:text-zinc-400'}`}>
                 BAHAR
               </button>
             </div>
           </div>
         </header>
 
-        {/* Ders Listesi - Animasyonlu */}
-        {/* KEY prop'u değişince React bu div'i baştan oluşturur ve animasyon çalışır */}
-        <div key={`${activeClass}-${activeTab}`} className="space-y-3 mb-6 animate-slide">
+        {/* Ders Listesi - YÖNLÜ ANİMASYON */}
+        {/* key prop'u sayesinde React div'i sıfırlayıp animasyonu yeniden başlatır */}
+        <div 
+          key={`${activeClass}-${activeTab}`} 
+          className={`space-y-3 mb-6 ${animDirection === 'right' ? 'animate-enter-right' : 'animate-enter-left'}`}
+        >
           {displayCourses.map((course) => (
             <div key={course.id} className={`flex items-center gap-3 p-3 rounded-2xl border transition-colors ${darkMode ? 'bg-zinc-900/50 border-zinc-800' : 'bg-white border-zinc-100 shadow-sm'}`}>
               <input type="text" value={course.name} readOnly={true} className={`flex-grow bg-transparent border-none outline-none text-sm font-medium cursor-default ${darkMode ? 'text-zinc-400' : 'text-zinc-700'}`} />
