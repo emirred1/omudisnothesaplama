@@ -1,24 +1,16 @@
 import Script from "next/script";
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter } from "next/font/google"; // Geist yerine Inter kullanıyoruz
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
+// Inter fontunu tanımlıyoruz (Eski sürümlerde standart budur)
+const inter = Inter({ subsets: ["latin"] });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
-// SEO AYARLARI BURADA GÜÇLENDİRİLDİ
 export const metadata: Metadata = {
   title: "OMÜ Diş Not Hesaplama | Ortalama Hesaplama Aracı",
   description: "OMÜ Diş Hekimliği öğrencileri için vize, final ve yıl sonu ortalama hesaplama aracı. Ders notlarınızı girin, geçme notunuzu hemen öğrenin.",
   keywords: ["omü diş", "omü diş hekimliği", "not hesaplama", "diş hekimliği ortalama", "omü not", "samsun diş", "vize final hesaplama"],
-  authors: [{ name: "Emir", url: "https://emirred.space" }],
+  authors: [{ name: "Emir Red", url: "https://emirred.space" }],
   openGraph: {
     title: "OMÜ Diş Not Hesaplama",
     description: "OMÜ Diş Hekimliği öğrencileri için pratik not hesaplama aracı.",
@@ -36,14 +28,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="tr">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        {/* Umami Takip Kodu */}
+      <body className={inter.className}>
+        {/* Umami Takip Kodu - TypeScript Hatalarını Önleyen Yöntem */}
         <Script
+          id="umami-tracker"
           src="https://admin.omudisnot.space/script.js"
-          data-website-id="49a0810c-bd0a-4e6c-88b3-6d504c544330"
           strategy="afterInteractive"
+          {...{ "data-website-id": "49a0810c-bd0a-4e6c-88b3-6d504c544330" }}
         />
 
         {children}
