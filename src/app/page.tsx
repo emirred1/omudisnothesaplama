@@ -19,7 +19,7 @@ const GUZ_DERSLERI_1 = [
   { id: 2, name: 'Fizyoloji', credit: 2, score: '' },
   { id: 3, name: 'Histoloji', credit: 2, score: '' },
   { id: 4, name: 'Organik Kimya', credit: 2, score: '' },
-  { id: 5, name: 'Diş Anatomisi ve Fizyolojisi I', credit: 1, score: '' },
+  { id: 5, name: 'Diş Anatomisi ve Fizyolojisi', credit: 1, score: '' },
   { id: 6, name: 'Dental Materyaller', credit: 1, score: '' },
   { id: 7, name: 'Tıbbi Biyokimya', credit: 2, score: '' },
   { id: 8, name: 'Tıbbi Biyoloji ve Genetik', credit: 2, score: '' },
