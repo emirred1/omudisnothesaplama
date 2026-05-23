@@ -30,6 +30,9 @@ type Course = {
   isPracticalPart?: boolean;
 };
 
+type SemesterCourses = { guz: Course[]; bahar: Course[] };
+type AllCoursesData = { sinif1: SemesterCourses; sinif2: SemesterCourses };
+
 const migrateHistologyCourses = (list: Course[]): Course[] =>
   list.map((course) => {
     if (course.id === 3 || course.id === 103) {
@@ -51,10 +54,7 @@ const migrateHistologyCourses = (list: Course[]): Course[] =>
     return course;
   });
 
-const migrateAllCourses = (data: {
-  sinif1: { guz: Course[]; bahar: Course[] };
-  sinif2: { guz: Course[]; bahar: Course[] };
-}) => ({
+const migrateAllCourses = (data: AllCoursesData): AllCoursesData => ({
   sinif1: {
     guz: migrateHistologyCourses(data.sinif1.guz),
     bahar: migrateHistologyCourses(data.sinif1.bahar),
@@ -91,7 +91,7 @@ const BAHAR_DERSLERI_1: Course[] = [
 ];
 
 // --- 2. SINIF DERSLERİ ---
-const GUZ_DERSLERI_2 = [
+const GUZ_DERSLERI_2: Course[] = [
   { id: 201, name: 'Protetik Diş Tedavisi', credit: 2, score: '' },
   { id: 202, name: 'Restoratif Diş Tedavisi', credit: 2, score: '' },
   { id: 203, name: 'Endodonti', credit: 2, score: '' },
@@ -102,7 +102,7 @@ const GUZ_DERSLERI_2 = [
   { id: 208, name: 'Farmakoloji', credit: 1, score: '' },
 ];
 
-const BAHAR_DERSLERI_2 = [
+const BAHAR_DERSLERI_2: Course[] = [
   { id: 301, name: 'Protetik Diş Tedavisi', credit: 2, score: '' },
   { id: 302, name: 'Restoratif Diş Tedavisi', credit: 2, score: '' },
   { id: 303, name: 'Endodonti', credit: 2, score: '' },
@@ -117,9 +117,9 @@ const BAHAR_DERSLERI_2 = [
 // ==========================================
 
 export default function Home() {
-  const [allCourses, setAllCourses] = useState({
+  const [allCourses, setAllCourses] = useState<AllCoursesData>({
     sinif1: { guz: GUZ_DERSLERI_1, bahar: BAHAR_DERSLERI_1 },
-    sinif2: { guz: GUZ_DERSLERI_2, bahar: BAHAR_DERSLERI_2 }
+    sinif2: { guz: GUZ_DERSLERI_2, bahar: BAHAR_DERSLERI_2 },
   });
   
   const [activeClass, setActiveClass] = useState('sinif1');
@@ -138,7 +138,7 @@ export default function Home() {
     const savedClass = localStorage.getItem('uni_class_v9');
 
     if (savedTheme === 'dark') setDarkMode(true);
-    if (savedData) setAllCourses(migrateAllCourses(JSON.parse(savedData)));
+    if (savedData) setAllCourses(migrateAllCourses(JSON.parse(savedData) as AllCoursesData));
     if (savedClass) setActiveClass(savedClass);
     setIsLoaded(true);
   }, []);
@@ -200,7 +200,7 @@ export default function Home() {
   };
 
   const calculateAll = () => {
-    const currentClassData = allCourses[activeClass as 'sinif1' | 'sinif2'];
+    const currentClassData: SemesterCourses = allCourses[activeClass as keyof AllCoursesData];
     let guz = Math.round(getAverageOfList(currentClassData.guz));
     let bahar = Math.round(getAverageOfList(currentClassData.bahar));
     let vize = Math.round((guz + bahar) / 2);
@@ -219,13 +219,18 @@ export default function Home() {
     if (Number(value) > 100) return;
     if (Number(value) < 0) return;
 
-    setAllCourses(prev => ({
-      ...prev,
-      [activeClass]: {
-        ...prev[activeClass as 'sinif1' | 'sinif2'],
-        [period]: prev[activeClass as 'sinif1' | 'sinif2'][period].map(c => c.id === id ? { ...c, score: value } : c)
-      }
-    }));
+    setAllCourses((prev) => {
+      const classKey = activeClass as keyof AllCoursesData;
+      return {
+        ...prev,
+        [classKey]: {
+          ...prev[classKey],
+          [period]: prev[classKey][period].map((c) =>
+            c.id === id ? { ...c, score: value } : c
+          ),
+        },
+      };
+    });
   };
 
   const resetCurrentScores = () => {
@@ -235,19 +240,22 @@ export default function Home() {
 
     const cleanList = defaultList.map(c => ({...c, score: ''}));
     
-    setAllCourses(prev => ({
-      ...prev,
-      [activeClass]: {
-        ...prev[activeClass as 'sinif1' | 'sinif2'],
-        [activeTab]: cleanList
-      }
-    }));
+    setAllCourses((prev) => {
+      const classKey = activeClass as keyof AllCoursesData;
+      return {
+        ...prev,
+        [classKey]: {
+          ...prev[classKey],
+          [activeTab]: cleanList,
+        },
+      };
+    });
   };
 
   if (!isLoaded) return null;
 
   // Şu anki sınıfın dersleri (Dönem ayrımı yapmadan alıyoruz, çünkü ikisini de çizeceğiz)
-  const currentClassData = allCourses[activeClass as 'sinif1' | 'sinif2'];
+  const currentClassData: SemesterCourses = allCourses[activeClass as keyof AllCoursesData];
 
   return (
     <main className={`min-h-screen transition-all duration-700 flex flex-col items-center justify-center p-6 text-[13px] overflow-hidden ${darkMode ? 'bg-black text-zinc-100' : 'bg-zinc-50 text-zinc-900'}`}>
