@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { analytics } from '@/lib/analytics';
 
 // ==========================================
 // 1. AYARLAR VE MÜFREDAT
@@ -17,11 +18,27 @@ const FINAL_BARAJI = 50;
 const HISTOLOGY_THEORY_WEIGHT = 0.92;
 const HISTOLOGY_PRACTICAL_WEIGHT = 0.08;
 const HISTOLOGY_COMBINED_CREDIT = 2.5;
-// Güz: teorik + pratik ayrı girilir (%92 + %8). Bahar: tek birleşik not (2.5 AKTS).
+// Güz histoloji: teorik + pratik (%92 + %8). Bahar histoloji: tek birleşik not (2.5 AKTS).
 const HISTOLOGY_PAIRS: { theoryId: number; practicalId: number }[] = [
   { theoryId: 3, practicalId: 11 },
 ];
-const HISTOLOGY_PRACTICAL_IDS = new Set(HISTOLOGY_PAIRS.map((p) => p.practicalId));
+
+type PracticalDisplay = 'weighted' | 'credit';
+
+type TheoryPracticalGroup = {
+  theoryId: number;
+  practicalId: number;
+  practicalDisplay: PracticalDisplay;
+};
+
+const DONEM1_GUZ_GROUPS: TheoryPracticalGroup[] = [
+  { theoryId: 1, practicalId: 10, practicalDisplay: 'credit' },
+  { theoryId: 3, practicalId: 11, practicalDisplay: 'weighted' },
+];
+
+const DONEM1_BAHAR_GROUPS: TheoryPracticalGroup[] = [
+  { theoryId: 101, practicalId: 110, practicalDisplay: 'credit' },
+];
 
 type Course = {
   id: number;
@@ -34,21 +51,36 @@ type Course = {
 type SemesterCourses = { guz: Course[]; bahar: Course[] };
 type AllCoursesData = { sinif1: SemesterCourses; sinif2: SemesterCourses };
 
-type HistologyGroupItem = { kind: 'group'; theory: Course; practical: Course };
-type GuzListItem = Course | HistologyGroupItem;
+type CourseGroupItem = {
+  kind: 'group';
+  theory: Course;
+  practical: Course;
+  practicalDisplay: PracticalDisplay;
+};
+type CourseListItem = Course | CourseGroupItem;
 
-const buildGuzCourseList = (courses: Course[], groupHistology: boolean): GuzListItem[] => {
-  if (!groupHistology) return courses;
+const buildGroupedCourseList = (
+  courses: Course[],
+  groups: TheoryPracticalGroup[],
+  enabled: boolean
+): CourseListItem[] => {
+  if (!enabled || groups.length === 0) return courses;
 
   const byId = Object.fromEntries(courses.map((c) => [c.id, c]));
-  const items: GuzListItem[] = [];
+  const practicalIds = new Set(groups.map((g) => g.practicalId));
+  const items: CourseListItem[] = [];
 
   for (const course of courses) {
-    if (HISTOLOGY_PRACTICAL_IDS.has(course.id)) continue;
+    if (practicalIds.has(course.id)) continue;
 
-    const pair = HISTOLOGY_PAIRS.find((p) => p.theoryId === course.id);
-    if (pair && byId[pair.practicalId]) {
-      items.push({ kind: 'group', theory: course, practical: byId[pair.practicalId] });
+    const group = groups.find((g) => g.theoryId === course.id);
+    if (group && byId[group.practicalId]) {
+      items.push({
+        kind: 'group',
+        theory: course,
+        practical: byId[group.practicalId],
+        practicalDisplay: group.practicalDisplay,
+      });
     } else {
       items.push(course);
     }
@@ -123,6 +155,7 @@ const migrateAllCourses = (data: AllCoursesData): AllCoursesData => ({
 // --- 1. SINIF DERSLERİ ---
 const GUZ_DERSLERI_1: Course[] = [
   { id: 1, name: 'Anatomi', credit: 2, score: '' },
+  { id: 10, name: 'Anatomi Pratik', credit: 1, score: '' },
   { id: 2, name: 'Fizyoloji', credit: 2, score: '' },
   { id: 3, name: 'Histoloji ve Embriyoloji', credit: HISTOLOGY_COMBINED_CREDIT, score: '' },
   { id: 4, name: 'Organik Kimya', credit: 2, score: '' },
@@ -131,12 +164,12 @@ const GUZ_DERSLERI_1: Course[] = [
   { id: 7, name: 'Tıbbi Biyokimya', credit: 2, score: '' },
   { id: 8, name: 'Tıbbi Biyoloji ve Genetik', credit: 2, score: '' },
   { id: 9, name: 'Öğrenci Oryantasyonu ve Diş Hekimliği Tarihi', credit: 1, score: '' },
-  { id: 10, name: 'Anatomi Pratik', credit: 1, score: '' },
   { id: 11, name: 'Histoloji ve Embriyoloji Pratik', credit: 0, score: '', isPracticalPart: true },
 ];
 
 const BAHAR_DERSLERI_1: Course[] = [
   { id: 101, name: 'Anatomi', credit: 2, score: '' },
+  { id: 110, name: 'Anatomi Pratik', credit: 1, score: '' },
   { id: 102, name: 'Fizyoloji', credit: 2, score: '' },
   { id: 103, name: 'Histoloji Teorik + Pratik', credit: HISTOLOGY_COMBINED_CREDIT, score: '' },
   { id: 104, name: 'Biyoistatistik', credit: 1, score: '' },
@@ -144,7 +177,6 @@ const BAHAR_DERSLERI_1: Course[] = [
   { id: 106, name: 'Dental Materyaller', credit: 1, score: '' },
   { id: 107, name: 'Biyofizik', credit: 2, score: '' },
   { id: 108, name: 'Mikrobiyoloji', credit: 1, score: '' },
-  { id: 110, name: 'Anatomi Pratik', credit: 1, score: '' },
 ];
 
 // --- 2. SINIF DERSLERİ ---
@@ -173,6 +205,164 @@ const BAHAR_DERSLERI_2: Course[] = [
 // KODUN GERİ KALANI
 // ==========================================
 
+function SemesterCourseList({
+  items,
+  period,
+  darkMode,
+  onScoreChange,
+}: {
+  items: CourseListItem[];
+  period: 'guz' | 'bahar';
+  darkMode: boolean;
+  onScoreChange: (id: number, value: string, period: 'guz' | 'bahar') => void;
+}) {
+  const scoreInputClass = (size: 'md' | 'sm') =>
+    `w-full bg-transparent text-center font-bold outline-none ${
+      size === 'md' ? 'text-lg' : 'text-base'
+    } ${darkMode ? 'text-emerald-400 placeholder:text-zinc-800' : 'text-emerald-600 placeholder:text-zinc-200'}`;
+
+  return (
+    <div className="space-y-3 mb-6">
+      {items.map((item) => {
+        if ('kind' in item && item.kind === 'group') {
+          const { theory, practical, practicalDisplay } = item;
+          return (
+            <div
+              key={`group-${theory.id}`}
+              className={`rounded-2xl border transition-colors overflow-hidden ${
+                darkMode ? 'bg-zinc-900/50 border-zinc-800' : 'bg-white border-zinc-100 shadow-sm'
+              }`}
+            >
+              <div className="flex items-center gap-3 p-3">
+                <input
+                  type="text"
+                  value={theory.name}
+                  readOnly
+                  className={`flex-grow bg-transparent border-none outline-none text-sm font-medium cursor-default ${
+                    darkMode ? 'text-zinc-300' : 'text-zinc-700'
+                  }`}
+                />
+                <div className="flex flex-col items-center w-12">
+                  <label className="text-[8px] font-bold text-zinc-500 uppercase">KREDİ</label>
+                  <input
+                    type="number"
+                    value={theory.credit}
+                    readOnly
+                    className={`w-full text-center bg-transparent border-none outline-none font-bold cursor-default ${
+                      darkMode ? 'text-zinc-500' : 'text-zinc-400'
+                    }`}
+                  />
+                </div>
+                <div className="flex flex-col items-center w-16">
+                  <label className="text-[8px] font-bold text-zinc-500 uppercase">TEORİK</label>
+                  <input
+                    type="number"
+                    value={theory.score}
+                    placeholder="-"
+                    min={0}
+                    max={100}
+                    onChange={(e) => onScoreChange(theory.id, e.target.value, period)}
+                    className={scoreInputClass('md')}
+                  />
+                </div>
+              </div>
+              <div
+                className={`mx-3 mb-3 flex items-center gap-2 rounded-xl border-l-2 py-2 pl-3 pr-2 ${
+                  darkMode ? 'border-zinc-600/80 bg-zinc-950/60' : 'border-zinc-300 bg-zinc-50'
+                }`}
+              >
+                <span
+                  className={`flex-grow text-[11px] font-medium ${
+                    darkMode ? 'text-zinc-500' : 'text-zinc-500'
+                  }`}
+                >
+                  Pratik
+                </span>
+                <div className="flex flex-col items-center w-10 shrink-0">
+                  <label className="text-[7px] font-bold text-zinc-500 uppercase">
+                    {practicalDisplay === 'weighted' ? 'Etki' : 'Kredi'}
+                  </label>
+                  {practicalDisplay === 'weighted' ? (
+                    <span
+                      className={`text-[10px] font-bold ${
+                        darkMode ? 'text-zinc-600' : 'text-zinc-400'
+                      }`}
+                    >
+                      %8
+                    </span>
+                  ) : (
+                    <span
+                      className={`text-[10px] font-bold ${
+                        darkMode ? 'text-zinc-600' : 'text-zinc-400'
+                      }`}
+                    >
+                      {practical.credit}
+                    </span>
+                  )}
+                </div>
+                <div className="flex flex-col items-center w-14 shrink-0">
+                  <label className="text-[7px] font-bold text-zinc-500 uppercase">Puan</label>
+                  <input
+                    type="number"
+                    value={practical.score}
+                    placeholder="-"
+                    min={0}
+                    max={100}
+                    onChange={(e) => onScoreChange(practical.id, e.target.value, period)}
+                    className={scoreInputClass('sm')}
+                  />
+                </div>
+              </div>
+            </div>
+          );
+        }
+
+        const course = item as Course;
+        return (
+          <div
+            key={course.id}
+            className={`flex items-center gap-3 p-3 rounded-2xl border transition-colors ${
+              darkMode ? 'bg-zinc-900/50 border-zinc-800' : 'bg-white border-zinc-100 shadow-sm'
+            }`}
+          >
+            <input
+              type="text"
+              value={course.name}
+              readOnly
+              className={`flex-grow bg-transparent border-none outline-none text-sm font-medium cursor-default ${
+                darkMode ? 'text-zinc-400' : 'text-zinc-700'
+              }`}
+            />
+            <div className="flex flex-col items-center w-12">
+              <label className="text-[8px] font-bold text-zinc-500 uppercase">KREDİ</label>
+              <input
+                type="number"
+                value={course.credit}
+                readOnly
+                className={`w-full text-center bg-transparent border-none outline-none font-bold cursor-default ${
+                  darkMode ? 'text-zinc-500' : 'text-zinc-400'
+                }`}
+              />
+            </div>
+            <div className="flex flex-col items-center w-16">
+              <label className="text-[8px] font-bold text-zinc-500 uppercase">PUAN</label>
+              <input
+                type="number"
+                value={course.score}
+                placeholder="-"
+                min={0}
+                max={100}
+                onChange={(e) => onScoreChange(course.id, e.target.value, period)}
+                className={scoreInputClass('md')}
+              />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function Home() {
   const [allCourses, setAllCourses] = useState<AllCoursesData>({
     sinif1: { guz: GUZ_DERSLERI_1, bahar: BAHAR_DERSLERI_1 },
@@ -188,6 +378,7 @@ export default function Home() {
 
   const [darkMode, setDarkMode] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
+  const scoreTrackedKeys = useRef(new Set<string>());
 
   useEffect(() => {
     const savedTheme = localStorage.getItem('uni_theme_v9');
@@ -276,6 +467,14 @@ export default function Home() {
     if (Number(value) > 100) return;
     if (Number(value) < 0) return;
 
+    if (value !== '') {
+      const trackKey = `${activeClass}-${period}`;
+      if (!scoreTrackedKeys.current.has(trackKey)) {
+        scoreTrackedKeys.current.add(trackKey);
+        analytics.scoreEntered(activeClass, period);
+      }
+    }
+
     setAllCourses((prev) => {
       const classKey = activeClass as keyof AllCoursesData;
       return {
@@ -291,12 +490,15 @@ export default function Home() {
   };
 
   const resetCurrentScores = () => {
+    analytics.clearScores(activeClass, activeTab);
+
     const defaultList = activeClass === 'sinif1' 
       ? (activeTab === 'guz' ? GUZ_DERSLERI_1 : BAHAR_DERSLERI_1)
       : (activeTab === 'guz' ? GUZ_DERSLERI_2 : BAHAR_DERSLERI_2);
 
     const cleanList = defaultList.map(c => ({...c, score: ''}));
-    
+    scoreTrackedKeys.current.delete(`${activeClass}-${activeTab}`);
+
     setAllCourses((prev) => {
       const classKey = activeClass as keyof AllCoursesData;
       return {
@@ -313,13 +515,17 @@ export default function Home() {
 
   // Şu anki sınıfın dersleri (Dönem ayrımı yapmadan alıyoruz, çünkü ikisini de çizeceğiz)
   const currentClassData: SemesterCourses = allCourses[activeClass as keyof AllCoursesData];
-  const groupGuzHistology = activeClass === 'sinif1';
-  const guzDisplayItems = buildGuzCourseList(currentClassData.guz, groupGuzHistology);
-
-  const scoreInputClass = (size: 'md' | 'sm') =>
-    `w-full bg-transparent text-center font-bold outline-none ${
-      size === 'md' ? 'text-lg' : 'text-base'
-    } ${darkMode ? 'text-emerald-400 placeholder:text-zinc-800' : 'text-emerald-600 placeholder:text-zinc-200'}`;
+  const groupDonem1Courses = activeClass === 'sinif1';
+  const guzDisplayItems = buildGroupedCourseList(
+    currentClassData.guz,
+    DONEM1_GUZ_GROUPS,
+    groupDonem1Courses
+  );
+  const baharDisplayItems = buildGroupedCourseList(
+    currentClassData.bahar,
+    DONEM1_BAHAR_GROUPS,
+    groupDonem1Courses
+  );
 
   return (
     <main className={`min-h-screen transition-all duration-700 flex flex-col items-center justify-center p-6 text-[13px] overflow-hidden ${darkMode ? 'bg-black text-zinc-100' : 'bg-zinc-50 text-zinc-900'}`}>
@@ -329,7 +535,14 @@ export default function Home() {
         <button onClick={resetCurrentScores} title="Temizle" className={`p-3 rounded-full transition-all active:scale-90 ${darkMode ? 'bg-zinc-900 text-zinc-500 border border-zinc-800' : 'bg-white shadow-sm text-zinc-400 border border-zinc-100'}`}>
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
         </button>
-        <button onClick={() => setDarkMode(!darkMode)} className={`p-3 rounded-full transition-all active:scale-90 ${darkMode ? 'bg-zinc-900 text-zinc-400 border border-zinc-800' : 'bg-white shadow-sm text-zinc-600 border border-zinc-100'}`}>
+        <button
+          onClick={() => {
+            const nextDark = !darkMode;
+            setDarkMode(nextDark);
+            analytics.toggleTheme(nextDark ? 'dark' : 'light');
+          }}
+          className={`p-3 rounded-full transition-all active:scale-90 ${darkMode ? 'bg-zinc-900 text-zinc-400 border border-zinc-800' : 'bg-white shadow-sm text-zinc-600 border border-zinc-100'}`}
+        >
           {darkMode ? 
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg> : 
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
@@ -354,10 +567,24 @@ export default function Home() {
                  ${activeClass === 'sinif1' ? 'translate-x-0' : 'translate-x-full'} 
                  ${darkMode ? 'bg-zinc-800' : 'bg-white'}`} 
               />
-              <button onClick={() => setActiveClass('sinif1')} className={`flex-1 z-10 text-[11px] font-bold uppercase tracking-wider transition-colors duration-300 ${activeClass === 'sinif1' ? (darkMode ? 'text-white' : 'text-zinc-900') : 'text-zinc-500 hover:text-zinc-400'}`}>
+              <button
+                onClick={() => {
+                  if (activeClass === 'sinif1') return;
+                  setActiveClass('sinif1');
+                  analytics.selectDonem('donem_1');
+                }}
+                className={`flex-1 z-10 text-[11px] font-bold uppercase tracking-wider transition-colors duration-300 ${activeClass === 'sinif1' ? (darkMode ? 'text-white' : 'text-zinc-900') : 'text-zinc-500 hover:text-zinc-400'}`}
+              >
                   DÖNEM 1
               </button>
-              <button onClick={() => setActiveClass('sinif2')} className={`flex-1 z-10 text-[11px] font-bold uppercase tracking-wider transition-colors duration-300 ${activeClass === 'sinif2' ? (darkMode ? 'text-white' : 'text-zinc-900') : 'text-zinc-500 hover:text-zinc-400'}`}>
+              <button
+                onClick={() => {
+                  if (activeClass === 'sinif2') return;
+                  setActiveClass('sinif2');
+                  analytics.selectDonem('donem_2');
+                }}
+                className={`flex-1 z-10 text-[11px] font-bold uppercase tracking-wider transition-colors duration-300 ${activeClass === 'sinif2' ? (darkMode ? 'text-white' : 'text-zinc-900') : 'text-zinc-500 hover:text-zinc-400'}`}
+              >
                   DÖNEM 2
               </button>
             </div>
@@ -368,10 +595,24 @@ export default function Home() {
                  ${activeTab === 'guz' ? 'translate-x-0' : 'translate-x-full'} 
                  ${darkMode ? 'bg-zinc-800' : 'bg-white'}`} 
                />
-              <button onClick={() => setActiveTab('guz')} className={`flex-1 z-10 text-[11px] font-bold uppercase tracking-wider transition-colors duration-300 ${activeTab === 'guz' ? (darkMode ? 'text-white' : 'text-zinc-900') : 'text-zinc-500 hover:text-zinc-400'}`}>
+              <button
+                onClick={() => {
+                  if (activeTab === 'guz') return;
+                  setActiveTab('guz');
+                  analytics.selectYariyil('guz');
+                }}
+                className={`flex-1 z-10 text-[11px] font-bold uppercase tracking-wider transition-colors duration-300 ${activeTab === 'guz' ? (darkMode ? 'text-white' : 'text-zinc-900') : 'text-zinc-500 hover:text-zinc-400'}`}
+              >
                 GÜZ
               </button>
-              <button onClick={() => setActiveTab('bahar')} className={`flex-1 z-10 text-[11px] font-bold uppercase tracking-wider transition-colors duration-300 ${activeTab === 'bahar' ? (darkMode ? 'text-white' : 'text-zinc-900') : 'text-zinc-500 hover:text-zinc-400'}`}>
+              <button
+                onClick={() => {
+                  if (activeTab === 'bahar') return;
+                  setActiveTab('bahar');
+                  analytics.selectYariyil('bahar');
+                }}
+                className={`flex-1 z-10 text-[11px] font-bold uppercase tracking-wider transition-colors duration-300 ${activeTab === 'bahar' ? (darkMode ? 'text-white' : 'text-zinc-900') : 'text-zinc-500 hover:text-zinc-400'}`}
+              >
                 BAHAR
               </button>
             </div>
@@ -389,160 +630,22 @@ export default function Home() {
              >
                 {/* SOL TARAF: GÜZ DERSLERİ */}
                 <div className="w-[50%] px-1">
-                  <div className="space-y-3 mb-6">
-                    {guzDisplayItems.map((item) => {
-                      if ('kind' in item && item.kind === 'group') {
-                        const { theory, practical } = item;
-                        return (
-                          <div
-                            key={`group-${theory.id}`}
-                            className={`rounded-2xl border transition-colors overflow-hidden ${
-                              darkMode ? 'bg-zinc-900/50 border-zinc-800' : 'bg-white border-zinc-100 shadow-sm'
-                            }`}
-                          >
-                            <div className="flex items-center gap-3 p-3">
-                              <input
-                                type="text"
-                                value={theory.name}
-                                readOnly
-                                className={`flex-grow bg-transparent border-none outline-none text-sm font-medium cursor-default ${
-                                  darkMode ? 'text-zinc-300' : 'text-zinc-700'
-                                }`}
-                              />
-                              <div className="flex flex-col items-center w-12">
-                                <label className="text-[8px] font-bold text-zinc-500 uppercase">KREDİ</label>
-                                <input
-                                  type="number"
-                                  value={theory.credit}
-                                  readOnly
-                                  className={`w-full text-center bg-transparent border-none outline-none font-bold cursor-default ${
-                                    darkMode ? 'text-zinc-500' : 'text-zinc-400'
-                                  }`}
-                                />
-                              </div>
-                              <div className="flex flex-col items-center w-16">
-                                <label className="text-[8px] font-bold text-zinc-500 uppercase">TEORİK</label>
-                                <input
-                                  type="number"
-                                  value={theory.score}
-                                  placeholder="-"
-                                  min={0}
-                                  max={100}
-                                  onChange={(e) => updateScore(theory.id, e.target.value, 'guz')}
-                                  className={scoreInputClass('md')}
-                                />
-                              </div>
-                            </div>
-                            <div
-                              className={`mx-3 mb-3 flex items-center gap-2 rounded-xl border-l-2 py-2 pl-3 pr-2 ${
-                                darkMode
-                                  ? 'border-zinc-600/80 bg-zinc-950/60'
-                                  : 'border-zinc-300 bg-zinc-50'
-                              }`}
-                            >
-                              <span
-                                className={`flex-grow text-[11px] font-medium ${
-                                  darkMode ? 'text-zinc-500' : 'text-zinc-500'
-                                }`}
-                              >
-                                Pratik
-                              </span>
-                              <div className="flex flex-col items-center w-10 shrink-0">
-                                <label className="text-[7px] font-bold text-zinc-500 uppercase">Etki</label>
-                                <span
-                                  className={`text-[10px] font-bold ${
-                                    darkMode ? 'text-zinc-600' : 'text-zinc-400'
-                                  }`}
-                                >
-                                  %8
-                                </span>
-                              </div>
-                              <div className="flex flex-col items-center w-14 shrink-0">
-                                <label className="text-[7px] font-bold text-zinc-500 uppercase">Puan</label>
-                                <input
-                                  type="number"
-                                  value={practical.score}
-                                  placeholder="-"
-                                  min={0}
-                                  max={100}
-                                  onChange={(e) => updateScore(practical.id, e.target.value, 'guz')}
-                                  className={scoreInputClass('sm')}
-                                />
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      }
-
-                      const course = item as Course;
-                      return (
-                        <div
-                          key={course.id}
-                          className={`flex items-center gap-3 p-3 rounded-2xl border transition-colors ${
-                            darkMode ? 'bg-zinc-900/50 border-zinc-800' : 'bg-white border-zinc-100 shadow-sm'
-                          }`}
-                        >
-                          <input
-                            type="text"
-                            value={course.name}
-                            readOnly
-                            className={`flex-grow bg-transparent border-none outline-none text-sm font-medium cursor-default ${
-                              darkMode ? 'text-zinc-400' : 'text-zinc-700'
-                            }`}
-                          />
-                          <div className="flex flex-col items-center w-12">
-                            <label className="text-[8px] font-bold text-zinc-500 uppercase">KREDİ</label>
-                            <input
-                              type="number"
-                              value={course.credit}
-                              readOnly
-                              className={`w-full text-center bg-transparent border-none outline-none font-bold cursor-default ${
-                                darkMode ? 'text-zinc-500' : 'text-zinc-400'
-                              }`}
-                            />
-                          </div>
-                          <div className="flex flex-col items-center w-16">
-                            <label className="text-[8px] font-bold text-zinc-500 uppercase">PUAN</label>
-                            <input
-                              type="number"
-                              value={course.score}
-                              placeholder="-"
-                              min={0}
-                              max={100}
-                              onChange={(e) => updateScore(course.id, e.target.value, 'guz')}
-                              className={scoreInputClass('md')}
-                            />
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                  <SemesterCourseList
+                    items={guzDisplayItems}
+                    period="guz"
+                    darkMode={darkMode}
+                    onScoreChange={updateScore}
+                  />
                 </div>
 
                 {/* SAĞ TARAF: BAHAR DERSLERİ */}
                 <div className="w-[50%] px-1">
-                  <div className="space-y-3 mb-6">
-                    {currentClassData.bahar.map((course) => (
-                      <div key={course.id} className={`flex items-center gap-3 p-3 rounded-2xl border transition-colors ${darkMode ? 'bg-zinc-900/50 border-zinc-800' : 'bg-white border-zinc-100 shadow-sm'}`}>
-                        <input type="text" value={course.name} readOnly={true} className={`flex-grow bg-transparent border-none outline-none text-sm font-medium cursor-default ${darkMode ? 'text-zinc-400' : 'text-zinc-700'}`} />
-                        <div className="flex flex-col items-center w-12">
-                          <label className="text-[8px] font-bold text-zinc-500 uppercase">
-                            {course.isPracticalPart ? 'ETKİ' : 'KREDİ'}
-                          </label>
-                          {course.isPracticalPart ? (
-                            <span className={`w-full text-center font-bold text-xs ${darkMode ? 'text-zinc-500' : 'text-zinc-400'}`}>%8</span>
-                          ) : (
-                            <input type="number" value={course.credit} readOnly={true} className={`w-full text-center bg-transparent border-none outline-none font-bold cursor-default ${darkMode ? 'text-zinc-500' : 'text-zinc-400'}`} />
-                          )}
-                        </div>
-                        <div className="flex flex-col items-center w-16">
-                          <label className="text-[8px] font-bold text-zinc-500 uppercase">PUAN</label>
-                          {/* ÖNEMLİ: Güncelleme yaparken 'bahar' olduğunu belirtiyoruz */}
-                          <input type="number" value={course.score} placeholder="-" min="0" max="100" onChange={(e) => updateScore(course.id, e.target.value, 'bahar')} className={`w-full bg-transparent text-center font-bold outline-none text-lg ${darkMode ? 'text-emerald-400 placeholder:text-zinc-800' : 'text-emerald-600 placeholder:text-zinc-200'}`} />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                  <SemesterCourseList
+                    items={baharDisplayItems}
+                    period="bahar"
+                    darkMode={darkMode}
+                    onScoreChange={updateScore}
+                  />
                 </div>
 
              </div>

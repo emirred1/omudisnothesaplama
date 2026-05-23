@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
+import { GoogleAnalytics } from "@next/third-parties/google";
 import { Inter } from "next/font/google"; // Geist yerine Inter kullanıyoruz
 import "./globals.css";
+
+const gaMeasurementId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
 
 // Inter fontunu tanımlıyoruz (Eski sürümlerde standart budur)
 const inter = Inter({ subsets: ["latin"] });
@@ -29,6 +32,7 @@ export default function RootLayout({
     <html lang="tr">
       <body className={inter.className}>
         {children}
+        {gaMeasurementId ? <GoogleAnalytics gaId={gaMeasurementId} /> : null}
       </body>
     </html>
   );
