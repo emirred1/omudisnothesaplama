@@ -17,10 +17,11 @@ const FINAL_BARAJI = 50;
 const HISTOLOGY_THEORY_WEIGHT = 0.92;
 const HISTOLOGY_PRACTICAL_WEIGHT = 0.08;
 const HISTOLOGY_COMBINED_CREDIT = 2.5;
+// Güz: teorik + pratik ayrı girilir (%92 + %8). Bahar: tek birleşik not (2.5 AKTS).
 const HISTOLOGY_PAIRS: { theoryId: number; practicalId: number }[] = [
   { theoryId: 3, practicalId: 11 },
-  { theoryId: 103, practicalId: 111 },
 ];
+const HISTOLOGY_PRACTICAL_IDS = new Set(HISTOLOGY_PAIRS.map((p) => p.practicalId));
 
 type Course = {
   id: number;
@@ -33,9 +34,32 @@ type Course = {
 type SemesterCourses = { guz: Course[]; bahar: Course[] };
 type AllCoursesData = { sinif1: SemesterCourses; sinif2: SemesterCourses };
 
-const migrateHistologyCourses = (list: Course[]): Course[] =>
+type HistologyGroupItem = { kind: 'group'; theory: Course; practical: Course };
+type GuzListItem = Course | HistologyGroupItem;
+
+const buildGuzCourseList = (courses: Course[], groupHistology: boolean): GuzListItem[] => {
+  if (!groupHistology) return courses;
+
+  const byId = Object.fromEntries(courses.map((c) => [c.id, c]));
+  const items: GuzListItem[] = [];
+
+  for (const course of courses) {
+    if (HISTOLOGY_PRACTICAL_IDS.has(course.id)) continue;
+
+    const pair = HISTOLOGY_PAIRS.find((p) => p.theoryId === course.id);
+    if (pair && byId[pair.practicalId]) {
+      items.push({ kind: 'group', theory: course, practical: byId[pair.practicalId] });
+    } else {
+      items.push(course);
+    }
+  }
+
+  return items;
+};
+
+const migrateGuzHistologyCourses = (list: Course[]): Course[] =>
   list.map((course) => {
-    if (course.id === 3 || course.id === 103) {
+    if (course.id === 3) {
       return {
         ...course,
         name: 'Histoloji ve Embriyoloji',
@@ -43,7 +67,7 @@ const migrateHistologyCourses = (list: Course[]): Course[] =>
         isPracticalPart: undefined,
       };
     }
-    if (course.id === 11 || course.id === 111) {
+    if (course.id === 11) {
       return {
         ...course,
         name: 'Histoloji ve Embriyoloji Pratik',
@@ -54,10 +78,43 @@ const migrateHistologyCourses = (list: Course[]): Course[] =>
     return course;
   });
 
+const migrateBaharHistologyCourses = (list: Course[]): Course[] => {
+  const theory = list.find((c) => c.id === 103);
+  const practical = list.find((c) => c.id === 111);
+
+  let mergedScore = theory?.score ?? '';
+  if (
+    theory?.score !== '' &&
+    practical?.score !== undefined &&
+    practical.score !== ''
+  ) {
+    const theoryScore = parseFloat(theory.score.toString());
+    const practicalScore = parseFloat(practical.score.toString());
+    mergedScore = String(
+      theoryScore * HISTOLOGY_THEORY_WEIGHT + practicalScore * HISTOLOGY_PRACTICAL_WEIGHT
+    );
+  }
+
+  return list
+    .filter((c) => c.id !== 111)
+    .map((course) => {
+      if (course.id === 103) {
+        return {
+          ...course,
+          name: 'Histoloji Teorik + Pratik',
+          credit: HISTOLOGY_COMBINED_CREDIT,
+          score: mergedScore,
+          isPracticalPart: undefined,
+        };
+      }
+      return course;
+    });
+};
+
 const migrateAllCourses = (data: AllCoursesData): AllCoursesData => ({
   sinif1: {
-    guz: migrateHistologyCourses(data.sinif1.guz),
-    bahar: migrateHistologyCourses(data.sinif1.bahar),
+    guz: migrateGuzHistologyCourses(data.sinif1.guz),
+    bahar: migrateBaharHistologyCourses(data.sinif1.bahar),
   },
   sinif2: data.sinif2,
 });
@@ -80,14 +137,13 @@ const GUZ_DERSLERI_1: Course[] = [
 const BAHAR_DERSLERI_1: Course[] = [
   { id: 101, name: 'Anatomi', credit: 2, score: '' },
   { id: 102, name: 'Fizyoloji', credit: 2, score: '' },
-  { id: 103, name: 'Histoloji ve Embriyoloji', credit: HISTOLOGY_COMBINED_CREDIT, score: '' },
+  { id: 103, name: 'Histoloji Teorik + Pratik', credit: HISTOLOGY_COMBINED_CREDIT, score: '' },
   { id: 104, name: 'Biyoistatistik', credit: 1, score: '' },
   { id: 105, name: 'Diş Anatomisi ve Fizyolojisi', credit: 1, score: '' },
   { id: 106, name: 'Dental Materyaller', credit: 1, score: '' },
   { id: 107, name: 'Biyofizik', credit: 2, score: '' },
   { id: 108, name: 'Mikrobiyoloji', credit: 1, score: '' },
   { id: 110, name: 'Anatomi Pratik', credit: 1, score: '' },
-  { id: 111, name: 'Histoloji ve Embriyoloji Pratik', credit: 0, score: '', isPracticalPart: true },
 ];
 
 // --- 2. SINIF DERSLERİ ---
@@ -256,6 +312,13 @@ export default function Home() {
 
   // Şu anki sınıfın dersleri (Dönem ayrımı yapmadan alıyoruz, çünkü ikisini de çizeceğiz)
   const currentClassData: SemesterCourses = allCourses[activeClass as keyof AllCoursesData];
+  const groupGuzHistology = activeClass === 'sinif1';
+  const guzDisplayItems = buildGuzCourseList(currentClassData.guz, groupGuzHistology);
+
+  const scoreInputClass = (size: 'md' | 'sm') =>
+    `w-full bg-transparent text-center font-bold outline-none ${
+      size === 'md' ? 'text-lg' : 'text-base'
+    } ${darkMode ? 'text-emerald-400 placeholder:text-zinc-800' : 'text-emerald-600 placeholder:text-zinc-200'}`;
 
   return (
     <main className={`min-h-screen transition-all duration-700 flex flex-col items-center justify-center p-6 text-[13px] overflow-hidden ${darkMode ? 'bg-black text-zinc-100' : 'bg-zinc-50 text-zinc-900'}`}>
@@ -326,26 +389,132 @@ export default function Home() {
                 {/* SOL TARAF: GÜZ DERSLERİ */}
                 <div className="w-[50%] px-1">
                   <div className="space-y-3 mb-6">
-                    {currentClassData.guz.map((course) => (
-                      <div key={course.id} className={`flex items-center gap-3 p-3 rounded-2xl border transition-colors ${darkMode ? 'bg-zinc-900/50 border-zinc-800' : 'bg-white border-zinc-100 shadow-sm'}`}>
-                        <input type="text" value={course.name} readOnly={true} className={`flex-grow bg-transparent border-none outline-none text-sm font-medium cursor-default ${darkMode ? 'text-zinc-400' : 'text-zinc-700'}`} />
-                        <div className="flex flex-col items-center w-12">
-                          <label className="text-[8px] font-bold text-zinc-500 uppercase">
-                            {course.isPracticalPart ? 'ETKİ' : 'KREDİ'}
-                          </label>
-                          {course.isPracticalPart ? (
-                            <span className={`w-full text-center font-bold text-xs ${darkMode ? 'text-zinc-500' : 'text-zinc-400'}`}>%8</span>
-                          ) : (
-                            <input type="number" value={course.credit} readOnly={true} className={`w-full text-center bg-transparent border-none outline-none font-bold cursor-default ${darkMode ? 'text-zinc-500' : 'text-zinc-400'}`} />
-                          )}
+                    {guzDisplayItems.map((item) => {
+                      if ('kind' in item && item.kind === 'group') {
+                        const { theory, practical } = item;
+                        return (
+                          <div
+                            key={`group-${theory.id}`}
+                            className={`rounded-2xl border transition-colors overflow-hidden ${
+                              darkMode ? 'bg-zinc-900/50 border-zinc-800' : 'bg-white border-zinc-100 shadow-sm'
+                            }`}
+                          >
+                            <div className="flex items-center gap-3 p-3">
+                              <input
+                                type="text"
+                                value={theory.name}
+                                readOnly
+                                className={`flex-grow bg-transparent border-none outline-none text-sm font-medium cursor-default ${
+                                  darkMode ? 'text-zinc-300' : 'text-zinc-700'
+                                }`}
+                              />
+                              <div className="flex flex-col items-center w-12">
+                                <label className="text-[8px] font-bold text-zinc-500 uppercase">KREDİ</label>
+                                <input
+                                  type="number"
+                                  value={theory.credit}
+                                  readOnly
+                                  className={`w-full text-center bg-transparent border-none outline-none font-bold cursor-default ${
+                                    darkMode ? 'text-zinc-500' : 'text-zinc-400'
+                                  }`}
+                                />
+                              </div>
+                              <div className="flex flex-col items-center w-16">
+                                <label className="text-[8px] font-bold text-zinc-500 uppercase">TEORİK</label>
+                                <input
+                                  type="number"
+                                  value={theory.score}
+                                  placeholder="-"
+                                  min={0}
+                                  max={100}
+                                  onChange={(e) => updateScore(theory.id, e.target.value, 'guz')}
+                                  className={scoreInputClass('md')}
+                                />
+                              </div>
+                            </div>
+                            <div
+                              className={`mx-3 mb-3 flex items-center gap-2 rounded-xl border-l-2 py-2 pl-3 pr-2 ${
+                                darkMode
+                                  ? 'border-zinc-600/80 bg-zinc-950/60'
+                                  : 'border-zinc-300 bg-zinc-50'
+                              }`}
+                            >
+                              <span
+                                className={`flex-grow text-[11px] font-medium ${
+                                  darkMode ? 'text-zinc-500' : 'text-zinc-500'
+                                }`}
+                              >
+                                Pratik
+                              </span>
+                              <div className="flex flex-col items-center w-10 shrink-0">
+                                <label className="text-[7px] font-bold text-zinc-500 uppercase">Etki</label>
+                                <span
+                                  className={`text-[10px] font-bold ${
+                                    darkMode ? 'text-zinc-600' : 'text-zinc-400'
+                                  }`}
+                                >
+                                  %8
+                                </span>
+                              </div>
+                              <div className="flex flex-col items-center w-14 shrink-0">
+                                <label className="text-[7px] font-bold text-zinc-500 uppercase">Puan</label>
+                                <input
+                                  type="number"
+                                  value={practical.score}
+                                  placeholder="-"
+                                  min={0}
+                                  max={100}
+                                  onChange={(e) => updateScore(practical.id, e.target.value, 'guz')}
+                                  className={scoreInputClass('sm')}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      const course = item as Course;
+                      return (
+                        <div
+                          key={course.id}
+                          className={`flex items-center gap-3 p-3 rounded-2xl border transition-colors ${
+                            darkMode ? 'bg-zinc-900/50 border-zinc-800' : 'bg-white border-zinc-100 shadow-sm'
+                          }`}
+                        >
+                          <input
+                            type="text"
+                            value={course.name}
+                            readOnly
+                            className={`flex-grow bg-transparent border-none outline-none text-sm font-medium cursor-default ${
+                              darkMode ? 'text-zinc-400' : 'text-zinc-700'
+                            }`}
+                          />
+                          <div className="flex flex-col items-center w-12">
+                            <label className="text-[8px] font-bold text-zinc-500 uppercase">KREDİ</label>
+                            <input
+                              type="number"
+                              value={course.credit}
+                              readOnly
+                              className={`w-full text-center bg-transparent border-none outline-none font-bold cursor-default ${
+                                darkMode ? 'text-zinc-500' : 'text-zinc-400'
+                              }`}
+                            />
+                          </div>
+                          <div className="flex flex-col items-center w-16">
+                            <label className="text-[8px] font-bold text-zinc-500 uppercase">PUAN</label>
+                            <input
+                              type="number"
+                              value={course.score}
+                              placeholder="-"
+                              min={0}
+                              max={100}
+                              onChange={(e) => updateScore(course.id, e.target.value, 'guz')}
+                              className={scoreInputClass('md')}
+                            />
+                          </div>
                         </div>
-                        <div className="flex flex-col items-center w-16">
-                          <label className="text-[8px] font-bold text-zinc-500 uppercase">PUAN</label>
-                          {/* ÖNEMLİ: Güncelleme yaparken 'guz' olduğunu belirtiyoruz */}
-                          <input type="number" value={course.score} placeholder="-" min="0" max="100" onChange={(e) => updateScore(course.id, e.target.value, 'guz')} className={`w-full bg-transparent text-center font-bold outline-none text-lg ${darkMode ? 'text-emerald-400 placeholder:text-zinc-800' : 'text-emerald-600 placeholder:text-zinc-200'}`} />
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -427,7 +596,17 @@ export default function Home() {
       <footer className="w-full max-w-md mt-10 mb-6 flex items-center justify-center gap-4">
         <div className={`h-[1px] flex-grow ${darkMode ? 'bg-zinc-900' : 'bg-zinc-200'}`}></div>
         <p className={`text-[9px] font-bold uppercase tracking-[0.2em] ${darkMode ? 'text-zinc-600' : 'text-zinc-400'}`}>
-            Made by Emir with AI
+          Made by{' '}
+          <a
+            href="https://www.instagram.com/emirred0/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`transition-colors hover:underline underline-offset-2 ${
+              darkMode ? 'text-zinc-400 hover:text-zinc-200' : 'text-zinc-500 hover:text-zinc-700'
+            }`}
+          >
+            Emir
+          </a>
         </p>
         <div className={`h-[1px] flex-grow ${darkMode ? 'bg-zinc-900' : 'bg-zinc-200'}`}></div>
       </footer>
