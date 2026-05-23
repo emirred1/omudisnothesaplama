@@ -84,8 +84,9 @@ const migrateBaharHistologyCourses = (list: Course[]): Course[] => {
 
   let mergedScore = theory?.score ?? '';
   if (
-    theory?.score !== '' &&
-    practical?.score !== undefined &&
+    theory &&
+    practical &&
+    theory.score !== '' &&
     practical.score !== ''
   ) {
     const theoryScore = parseFloat(theory.score.toString());
