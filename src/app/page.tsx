@@ -17,10 +17,10 @@ const FINAL_BARAJI = 50;
 const HISTOLOGY_THEORY_WEIGHT = 0.92;
 const HISTOLOGY_PRACTICAL_WEIGHT = 0.08;
 const HISTOLOGY_COMBINED_CREDIT = 2.5;
-const HISTOLOGY_PAIRS = [
+const HISTOLOGY_PAIRS: { theoryId: number; practicalId: number }[] = [
   { theoryId: 3, practicalId: 11 },
   { theoryId: 103, practicalId: 111 },
-] as const;
+];
 
 type Course = {
   id: number;
@@ -161,7 +161,7 @@ export default function Home() {
   };
 
   const getAverageOfList = (list: Course[]) => {
-    const practicalIds = new Set(HISTOLOGY_PAIRS.map((p) => p.practicalId));
+    const practicalIds = new Set<number>(HISTOLOGY_PAIRS.map((p) => p.practicalId));
     const listById = Object.fromEntries(list.map((c) => [c.id, c]));
 
     let totalWeightedScore = 0;
