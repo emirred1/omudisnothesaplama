@@ -13,11 +13,60 @@ const BASLIK_ALT = "ORTALAMA HESAPLAMA";
 const GECME_NOTU = 60; 
 const FINAL_BARAJI = 50; 
 
+// Histoloji ve Embriyoloji: tek ders (2.5 AKTS), teorik %92 + pratik %8
+const HISTOLOGY_THEORY_WEIGHT = 0.92;
+const HISTOLOGY_PRACTICAL_WEIGHT = 0.08;
+const HISTOLOGY_COMBINED_CREDIT = 2.5;
+const HISTOLOGY_PAIRS = [
+  { theoryId: 3, practicalId: 11 },
+  { theoryId: 103, practicalId: 111 },
+] as const;
+
+type Course = {
+  id: number;
+  name: string;
+  credit: number;
+  score: string;
+  isPracticalPart?: boolean;
+};
+
+const migrateHistologyCourses = (list: Course[]): Course[] =>
+  list.map((course) => {
+    if (course.id === 3 || course.id === 103) {
+      return {
+        ...course,
+        name: 'Histoloji ve Embriyoloji',
+        credit: HISTOLOGY_COMBINED_CREDIT,
+        isPracticalPart: undefined,
+      };
+    }
+    if (course.id === 11 || course.id === 111) {
+      return {
+        ...course,
+        name: 'Histoloji ve Embriyoloji Pratik',
+        credit: 0,
+        isPracticalPart: true,
+      };
+    }
+    return course;
+  });
+
+const migrateAllCourses = (data: {
+  sinif1: { guz: Course[]; bahar: Course[] };
+  sinif2: { guz: Course[]; bahar: Course[] };
+}) => ({
+  sinif1: {
+    guz: migrateHistologyCourses(data.sinif1.guz),
+    bahar: migrateHistologyCourses(data.sinif1.bahar),
+  },
+  sinif2: data.sinif2,
+});
+
 // --- 1. SINIF DERSLERİ ---
-const GUZ_DERSLERI_1 = [
+const GUZ_DERSLERI_1: Course[] = [
   { id: 1, name: 'Anatomi', credit: 2, score: '' },
   { id: 2, name: 'Fizyoloji', credit: 2, score: '' },
-  { id: 3, name: 'Histoloji', credit: 2, score: '' },
+  { id: 3, name: 'Histoloji ve Embriyoloji', credit: HISTOLOGY_COMBINED_CREDIT, score: '' },
   { id: 4, name: 'Organik Kimya', credit: 2, score: '' },
   { id: 5, name: 'Diş Anatomisi ve Fizyolojisi', credit: 1, score: '' },
   { id: 6, name: 'Dental Materyaller', credit: 1, score: '' },
@@ -25,20 +74,20 @@ const GUZ_DERSLERI_1 = [
   { id: 8, name: 'Tıbbi Biyoloji ve Genetik', credit: 2, score: '' },
   { id: 9, name: 'Öğrenci Oryantasyonu ve Diş Hekimliği Tarihi', credit: 1, score: '' },
   { id: 10, name: 'Anatomi Pratik', credit: 1, score: '' },
-  { id: 11, name: 'Histoloji Pratik', credit: 0.5, score: '' },
+  { id: 11, name: 'Histoloji ve Embriyoloji Pratik', credit: 0, score: '', isPracticalPart: true },
 ];
 
-const BAHAR_DERSLERI_1 = [
+const BAHAR_DERSLERI_1: Course[] = [
   { id: 101, name: 'Anatomi', credit: 2, score: '' },
   { id: 102, name: 'Fizyoloji', credit: 2, score: '' },
-  { id: 103, name: 'Histoloji', credit: 2, score: '' },
+  { id: 103, name: 'Histoloji ve Embriyoloji', credit: HISTOLOGY_COMBINED_CREDIT, score: '' },
   { id: 104, name: 'Biyoistatistik', credit: 1, score: '' },
   { id: 105, name: 'Diş Anatomisi ve Fizyolojisi', credit: 1, score: '' },
   { id: 106, name: 'Dental Materyaller', credit: 1, score: '' },
   { id: 107, name: 'Biyofizik', credit: 2, score: '' },
   { id: 108, name: 'Mikrobiyoloji', credit: 1, score: '' },
   { id: 110, name: 'Anatomi Pratik', credit: 1, score: '' },
-  { id: 111, name: 'Histoloji Pratik', credit: 0.5, score: '' },
+  { id: 111, name: 'Histoloji ve Embriyoloji Pratik', credit: 0, score: '', isPracticalPart: true },
 ];
 
 // --- 2. SINIF DERSLERİ ---
@@ -89,7 +138,7 @@ export default function Home() {
     const savedClass = localStorage.getItem('uni_class_v9');
 
     if (savedTheme === 'dark') setDarkMode(true);
-    if (savedData) setAllCourses(JSON.parse(savedData));
+    if (savedData) setAllCourses(migrateAllCourses(JSON.parse(savedData)));
     if (savedClass) setActiveClass(savedClass);
     setIsLoaded(true);
   }, []);
@@ -104,10 +153,40 @@ export default function Home() {
   }, [allCourses, activeClass, darkMode, isLoaded]);
 
   // --- HESAPLAMA ---
-  const getAverageOfList = (list: any[]) => {
+  const getHistologyCombinedScore = (theoryScore: number, practicalScore: number | null) => {
+    if (practicalScore !== null) {
+      return theoryScore * HISTOLOGY_THEORY_WEIGHT + practicalScore * HISTOLOGY_PRACTICAL_WEIGHT;
+    }
+    return theoryScore;
+  };
+
+  const getAverageOfList = (list: Course[]) => {
+    const practicalIds = new Set(HISTOLOGY_PAIRS.map((p) => p.practicalId));
+    const listById = Object.fromEntries(list.map((c) => [c.id, c]));
+
     let totalWeightedScore = 0;
     let totalCredits = 0;
-    list.forEach(course => {
+
+    list.forEach((course) => {
+      if (practicalIds.has(course.id)) return;
+
+      const pair = HISTOLOGY_PAIRS.find((p) => p.theoryId === course.id);
+      if (pair) {
+        if (course.score === '') return;
+
+        const theoryScore = parseFloat(course.score.toString());
+        const practicalCourse = listById[pair.practicalId];
+        const practicalScore =
+          practicalCourse?.score !== ''
+            ? parseFloat(practicalCourse.score.toString())
+            : null;
+
+        const combined = getHistologyCombinedScore(theoryScore, practicalScore);
+        totalWeightedScore += combined * HISTOLOGY_COMBINED_CREDIT;
+        totalCredits += HISTOLOGY_COMBINED_CREDIT;
+        return;
+      }
+
       if (course.score !== '' && course.credit) {
         const scoreVal = parseFloat(course.score.toString());
         const creditVal = parseFloat(course.credit.toString());
@@ -115,6 +194,7 @@ export default function Home() {
         totalCredits += creditVal;
       }
     });
+
     if (totalCredits === 0) return 0;
     return totalWeightedScore / totalCredits;
   };
@@ -242,8 +322,14 @@ export default function Home() {
                       <div key={course.id} className={`flex items-center gap-3 p-3 rounded-2xl border transition-colors ${darkMode ? 'bg-zinc-900/50 border-zinc-800' : 'bg-white border-zinc-100 shadow-sm'}`}>
                         <input type="text" value={course.name} readOnly={true} className={`flex-grow bg-transparent border-none outline-none text-sm font-medium cursor-default ${darkMode ? 'text-zinc-400' : 'text-zinc-700'}`} />
                         <div className="flex flex-col items-center w-12">
-                          <label className="text-[8px] font-bold text-zinc-500 uppercase">KREDİ</label>
-                          <input type="number" value={course.credit} readOnly={true} className={`w-full text-center bg-transparent border-none outline-none font-bold cursor-default ${darkMode ? 'text-zinc-500' : 'text-zinc-400'}`} />
+                          <label className="text-[8px] font-bold text-zinc-500 uppercase">
+                            {course.isPracticalPart ? 'ETKİ' : 'KREDİ'}
+                          </label>
+                          {course.isPracticalPart ? (
+                            <span className={`w-full text-center font-bold text-xs ${darkMode ? 'text-zinc-500' : 'text-zinc-400'}`}>%8</span>
+                          ) : (
+                            <input type="number" value={course.credit} readOnly={true} className={`w-full text-center bg-transparent border-none outline-none font-bold cursor-default ${darkMode ? 'text-zinc-500' : 'text-zinc-400'}`} />
+                          )}
                         </div>
                         <div className="flex flex-col items-center w-16">
                           <label className="text-[8px] font-bold text-zinc-500 uppercase">PUAN</label>
@@ -262,8 +348,14 @@ export default function Home() {
                       <div key={course.id} className={`flex items-center gap-3 p-3 rounded-2xl border transition-colors ${darkMode ? 'bg-zinc-900/50 border-zinc-800' : 'bg-white border-zinc-100 shadow-sm'}`}>
                         <input type="text" value={course.name} readOnly={true} className={`flex-grow bg-transparent border-none outline-none text-sm font-medium cursor-default ${darkMode ? 'text-zinc-400' : 'text-zinc-700'}`} />
                         <div className="flex flex-col items-center w-12">
-                          <label className="text-[8px] font-bold text-zinc-500 uppercase">KREDİ</label>
-                          <input type="number" value={course.credit} readOnly={true} className={`w-full text-center bg-transparent border-none outline-none font-bold cursor-default ${darkMode ? 'text-zinc-500' : 'text-zinc-400'}`} />
+                          <label className="text-[8px] font-bold text-zinc-500 uppercase">
+                            {course.isPracticalPart ? 'ETKİ' : 'KREDİ'}
+                          </label>
+                          {course.isPracticalPart ? (
+                            <span className={`w-full text-center font-bold text-xs ${darkMode ? 'text-zinc-500' : 'text-zinc-400'}`}>%8</span>
+                          ) : (
+                            <input type="number" value={course.credit} readOnly={true} className={`w-full text-center bg-transparent border-none outline-none font-bold cursor-default ${darkMode ? 'text-zinc-500' : 'text-zinc-400'}`} />
+                          )}
                         </div>
                         <div className="flex flex-col items-center w-16">
                           <label className="text-[8px] font-bold text-zinc-500 uppercase">PUAN</label>

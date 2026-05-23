@@ -10,7 +10,7 @@ Bu proje modern web teknolojileri ile performanslı ve şık olacak şekilde gel
 
 - **Dil:** [TypeScript](https://www.typescriptlang.org/)
 - **Styling:** [Tailwind CSS](https://tailwindcss.com/)
-- **Deployment:** [Netlify](https://www.netlify.com/) 
+- **Deployment:** [Vercel](https://vercel.com/) (GitHub entegrasyonu ile otomatik dağıtım)
 
 ## 🚀 Kurulum ve Başlangıç
 

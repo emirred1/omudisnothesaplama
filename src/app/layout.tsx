@@ -1,4 +1,3 @@
-import Script from "next/script";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google"; // Geist yerine Inter kullanıyoruz
 import "./globals.css";
@@ -29,14 +28,6 @@ export default function RootLayout({
   return (
     <html lang="tr">
       <body className={inter.className}>
-        {/* Umami Takip Kodu - TypeScript Hatalarını Önleyen Yöntem */}
-        <Script
-          id="umami-tracker"
-          src="https://admin.omudisnot.space/script.js"
-          strategy="afterInteractive"
-          {...{ "data-website-id": "49a0810c-bd0a-4e6c-88b3-6d504c544330" }}
-        />
-
         {children}
       </body>
     </html>
