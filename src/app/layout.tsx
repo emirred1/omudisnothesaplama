@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { GoogleAnalytics } from "@next/third-parties/google";
+import { Analytics } from "@vercel/analytics/next";
 import { Inter } from "next/font/google"; // Geist yerine Inter kullanıyoruz
 import "./globals.css";
 
@@ -33,6 +34,7 @@ export default function RootLayout({
       <body className={inter.className}>
         {children}
         {gaMeasurementId ? <GoogleAnalytics gaId={gaMeasurementId} /> : null}
+        <Analytics />
       </body>
     </html>
   );
