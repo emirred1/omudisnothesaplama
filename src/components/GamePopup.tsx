@@ -37,14 +37,11 @@ export default function GamePopup() {
 
         {/* İçerik */}
         <div className="text-center mt-2">
-          <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-tr from-blue-500 to-indigo-500 rounded-2xl shadow-lg flex items-center justify-center rotate-3 hover:rotate-6 transition-transform">
-            <span className="text-3xl" role="img" aria-label="gamepad">🎮</span>
-          </div>
           <h2 className="text-2xl font-extrabold text-zinc-900 dark:text-white mb-2 tracking-tight">
             Yeni Oyunumu Deneyin!
           </h2>
           <p className="text-zinc-600 dark:text-zinc-400 mb-6 text-sm leading-relaxed">
-            Eğlenceli ve yepyeni oyunumuz &quot;Sıcak Soğuk&quot; yayında. Hemen oynamak için aşağıdaki butona tıklayın!
+            kendi yaptığım eğlenceli kelime oyunu sıcak soğuk yayında
           </p>
           
           {/* Aksiyon Butonları */}
@@ -60,7 +57,7 @@ export default function GamePopup() {
               target="_blank"
               rel="noopener noreferrer"
               onClick={handleClose}
-              className="px-6 py-2.5 rounded-xl font-semibold bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 transition-all shadow-[0_0_20px_rgba(37,99,235,0.3)] hover:shadow-[0_0_25px_rgba(37,99,235,0.5)] hover:-translate-y-0.5 w-full sm:w-auto order-1 sm:order-2 flex items-center justify-center gap-2"
+              className="px-6 py-2.5 rounded-xl font-semibold bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200 transition-all shadow-lg hover:-translate-y-0.5 w-full sm:w-auto order-1 sm:order-2 flex items-center justify-center gap-2"
             >
               Oyna
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
