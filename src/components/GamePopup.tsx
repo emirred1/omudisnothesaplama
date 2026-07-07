@@ -38,8 +38,8 @@ export default function GamePopup() {
 
         {/* İçerik */}
         <div className="text-center mt-2">
-          <div className="w-full flex justify-center mb-4">
-            <Image src="/sicaksoguk.png" alt="Sıcak Soğuk Oyunu" width={100} height={100} className="rounded-2xl shadow-sm object-cover" />
+          <div className="w-full mb-6">
+            <Image src="/sicaksoguk.png" alt="Sıcak Soğuk Oyunu" width={800} height={400} className="w-full h-auto rounded-xl shadow-md object-cover" />
           </div>
           <h2 className="text-2xl font-extrabold text-zinc-900 dark:text-white mb-2 tracking-tight">
             Yeni Oyunumu Deneyin!
