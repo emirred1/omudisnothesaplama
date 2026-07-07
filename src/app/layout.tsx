@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { GoogleAnalytics } from "@next/third-parties/google";
 import { Inter } from "next/font/google"; // Geist yerine Inter kullanıyoruz
 import "./globals.css";
+import GamePopup from "@/components/GamePopup";
 
 const gaMeasurementId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
 
@@ -32,6 +33,7 @@ export default function RootLayout({
     <html lang="tr">
       <body className={inter.className}>
         {children}
+        <GamePopup />
         {gaMeasurementId ? <GoogleAnalytics gaId={gaMeasurementId} /> : null}
       </body>
     </html>
