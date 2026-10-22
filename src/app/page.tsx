@@ -702,7 +702,7 @@ export default function Home() {
         <p className={`text-[9px] font-bold uppercase tracking-[0.2em] ${darkMode ? 'text-zinc-600' : 'text-zinc-400'}`}>
           Made by{' '}
           <a
-            href="https://www.instagram.com/emirred0/"
+            href="https://www.instagram.com/emirdemyr/"
             target="_blank"
             rel="noopener noreferrer"
             className={`transition-colors hover:underline underline-offset-2 ${
