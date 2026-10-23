@@ -9,7 +9,6 @@ export default function GamePopup() {
   useEffect(() => {
     const hasSeenPopup = sessionStorage.getItem('hasSeenGamePopup');
     if (!hasSeenPopup) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- popup state is restored once on mount
       setIsOpen(true);
     }
   }, []);
@@ -46,7 +45,7 @@ export default function GamePopup() {
             Yeni Oyunumu Deneyin!
           </h2>
           <p className="text-zinc-600 dark:text-zinc-400 mb-6 text-sm leading-relaxed">
-            Kendi yaptığım eğlenceli kelime oyunu &quot;Sıcak Soğuk&quot; yayında!
+            Kendi yaptığım eğlenceli kelime oyunu "Sıcak Soğuk" yayında!
           </p>
           
           {/* Aksiyon Butonları */}
